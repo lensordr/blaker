@@ -15,31 +15,17 @@ const SEED_ADMIN = {
 const SEED_EVENTS = [
   {
     id: 'evt-001',
-    title: 'Ruta por Andalucía',
-    description: 'Recorremos los mejores puertos de Andalucía. Salida desde Málaga, pasando por Ronda y terminando en Granada.',
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000).toISOString(),
-    location: 'Málaga, España',
-    routeUrl: 'https://maps.google.com/maps?q=Malaga+to+Granada',
-    coverImage: null,
-    createdBy: 'admin-001',
-    createdAt: new Date().toISOString(),
-    status: 'upcoming', // upcoming | active | ended
-    maxParticipants: 30,
-  },
-  {
-    id: 'evt-002',
-    title: 'Costa Brava Weekend',
-    description: 'Fin de semana épico por la Costa Brava. Carreteras de montaña con vistas al Mediterráneo.',
-    date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 22 * 24 * 60 * 60 * 1000).toISOString(),
-    location: 'Girona, España',
-    routeUrl: 'https://maps.google.com/maps?q=Costa+Brava+motorcycle+route',
+    title: 'Ruta por Montserrat',
+    description: 'Ruta épica por las montañas de Montserrat. Salida desde Barcelona, carreteras de montaña con vistas increíbles. Una experiencia que no te puedes perder.',
+    date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000).toISOString(),
+    location: 'Montserrat, Barcelona',
+    routeUrl: 'https://maps.google.com/maps?q=Montserrat+Barcelona+motorcycle+route',
     coverImage: null,
     createdBy: 'admin-001',
     createdAt: new Date().toISOString(),
     status: 'upcoming',
-    maxParticipants: 20,
+    maxParticipants: 25,
   },
 ]
 
@@ -305,6 +291,7 @@ const useStore = create(
     }),
     {
       name: 'blaker-storage',
+      version: 2,
       // Don't persist passwords in currentUser
       partialize: (state) => ({
         ...state,

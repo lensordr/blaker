@@ -402,6 +402,7 @@ export default function AdminPage() {
   const [editEvent, setEditEvent] = useState(null)
   const [showParticipants, setShowParticipants] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [tab, setTab] = useState('events')
 
   if (currentUser?.role !== 'admin') {
@@ -416,8 +417,12 @@ export default function AdminPage() {
   const totalUsers = users.filter((u) => u.role !== 'admin').length
 
   const handleDelete = (event) => {
-    if (!window.confirm(`¿Eliminar "${event.title}"?`)) return
-    deleteEvent(event.id)
+    setConfirmDelete(event)
+  }
+
+  const confirmDeleteEvent = () => {
+    deleteEvent(confirmDelete.id)
+    setConfirmDelete(null)
     toast('Evento eliminado', 'error')
   }
 
@@ -716,6 +721,27 @@ export default function AdminPage() {
       )}
       {showSettings && (
         <AdminSettingsModal onClose={() => setShowSettings(false)} />
+      )}
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: 'auto' }}>
+            <div className="modal-handle" />
+            <h2 className="modal-title" style={{ fontSize: 20 }}>¿Eliminar evento?</h2>
+            <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 24 }}>
+              Se eliminará <strong style={{ color: 'var(--text)' }}>"{confirmDelete.title}"</strong> permanentemente. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmDelete(null)}>
+                Cancelar
+              </button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={confirmDeleteEvent}>
+                <IconTrash size={16} /> Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
