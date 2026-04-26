@@ -1,15 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
+    <title>BLAKER</title>
     <script>
-      // GitHub Pages SPA redirect trick
-      // Saves the path to sessionStorage then redirects to index.html
-      var path = window.location.pathname;
-      var base = '/blaker';
-      var route = path.replace(base, '') || '/';
-      sessionStorage.setItem('spa_redirect', route + window.location.search);
-      window.location.replace(base + '/');
+      // Single Page App redirect for GitHub Pages
+      // When GitHub serves this 404.html, save the intended path
+      // and redirect to the root so React Router can handle it
+      (function() {
+        var base = '/blaker';
+        var path = window.location.pathname.replace(base, '') || '/';
+        var search = window.location.search;
+        sessionStorage.setItem('spa_redirect', path + search);
+        window.location.replace(base + '/');
+      })();
     </script>
   </head>
   <body></body>
