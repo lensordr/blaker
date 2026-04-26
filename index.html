@@ -15,6 +15,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Restore route after GitHub Pages 404 redirect
+      var redirect = sessionStorage.getItem('spa_redirect');
+      if (redirect) {
+        sessionStorage.removeItem('spa_redirect');
+        window.history.replaceState(null, '', '/blaker' + redirect);
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
