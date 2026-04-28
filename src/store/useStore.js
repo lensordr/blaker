@@ -1,303 +1,230 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { api, setToken, clearToken } from '../api'
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-const SEED_ADMIN = {
-  id: 'admin-001',
-  name: 'Blaker Admin',
-  email: 'admin@blaker.es',
-  password: 'blaker2024',
-  role: 'admin',
-  avatar: null,
-  createdAt: new Date('2024-01-01').toISOString(),
-}
-
-const SEED_EVENTS = [
-  {
-    id: 'evt-001',
-    title: 'Ruta por Montserrat',
-    description: 'Ruta épica por las montañas de Montserrat. Salida desde Barcelona, carreteras de montaña con vistas increíbles. Una experiencia que no te puedes perder.',
-    date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000).toISOString(),
-    location: 'Montserrat, Barcelona',
-    routeUrl: 'https://maps.google.com/maps?q=Montserrat+Barcelona+motorcycle+route',
-    coverImage: null,
-    createdBy: 'admin-001',
-    createdAt: new Date().toISOString(),
-    status: 'upcoming',
-    maxParticipants: 25,
-  },
-]
-
-// ─── Store ────────────────────────────────────────────────────────────────────
 const useStore = create(
   persist(
     (set, get) => ({
       // ── Auth ──────────────────────────────────────────────────────────────
       currentUser: null,
-      users: [SEED_ADMIN],
+      token: null,
 
-      login: (email, password) => {
-        const { users } = get()
-        const user = users.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-        )
-        if (!user) return { error: 'Email o contraseña incorrectos' }
-        const { password: _, ...safeUser } = user
-        set({ currentUser: safeUser })
-        return { user: safeUser }
-      },
-
-      logout: () => set({ currentUser: null }),
-
-      register: (data) => {
-        const { users } = get()
-        if (users.find((u) => u.email.toLowerCase() === data.email.toLowerCase())) {
-          return { error: 'Este email ya está registrado' }
-        }
-        const newUser = {
-          id: `user-${Date.now()}`,
-          name: data.name,
-          email: data.email,
-          password: data.password,
-          role: 'user',
-          avatar: null,
-          // Questionnaire
-          motoType: data.motoType || '',
-          motoModel: data.motoModel || '',
-          location: data.location || '',
-          experience: data.experience || '',
-          needsFood: data.needsFood ?? false,
-          isSubscriber: data.isSubscriber ?? false,
-          instaHandle: data.instaHandle || '',
-          heardFrom: data.heardFrom || '',
-          createdAt: new Date().toISOString(),
-        }
-        set({ users: [...users, newUser] })
-        const { password: _, ...safeUser } = newUser
-        set({ currentUser: safeUser })
-        return { user: safeUser }
-      },
-
-      updateUser: (userId, updates) => {
-        const { users, currentUser } = get()
-        const updated = users.map((u) => (u.id === userId ? { ...u, ...updates } : u))
-        set({ users: updated })
-        if (currentUser?.id === userId) {
-          set({ currentUser: { ...currentUser, ...updates } })
+      login: async (email, password) => {
+        try {
+          const data = await api.login({ username: email, email, password })
+          setToken(data.access)
+          set({ currentUser: data.user, token: data.access })
+          return { user: data.user }
+        } catch (e) {
+          return { error: e.data?.error || 'Email o contraseña incorrectos' }
         }
       },
 
-      // ── Events ────────────────────────────────────────────────────────────
-      events: SEED_EVENTS,
+      logout: () => {
+        clearToken()
+        set({ currentUser: null, token: null })
+      },
 
-      createEvent: (data) => {
-        const { events, currentUser } = get()
-        const newEvent = {
-          id: `evt-${Date.now()}`,
-          ...data,
-          createdBy: currentUser.id,
-          createdAt: new Date().toISOString(),
-          status: 'upcoming',
+      register: async (data) => {
+        try {
+          const res = await api.register({
+            username: data.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Date.now().toString().slice(-4),
+            email: data.email,
+            password: data.password,
+            first_name: data.name.split(' ')[0] || data.name,
+            last_name: data.name.split(' ').slice(1).join(' ') || '',
+            moto_type: data.motoType || '',
+            moto_model: data.motoModel || '',
+            experience: data.experience || '',
+            location: data.location || '',
+            latitude: data.latitude || null,
+            longitude: data.longitude || null,
+            insta_handle: data.instaHandle || '',
+            needs_food: data.needsFood || false,
+            heard_from: data.heardFrom || '',
+          })
+          setToken(res.access)
+          set({ currentUser: res.user, token: res.access })
+          return { user: res.user }
+        } catch (e) {
+          const errs = e.data || {}
+          const msg = errs.email?.[0] || errs.username?.[0] || errs.error || 'Error al registrarse'
+          return { error: msg }
         }
-        set({ events: [...events, newEvent] })
-        return newEvent
       },
 
-      updateEvent: (eventId, updates) => {
-        const { events } = get()
-        set({ events: events.map((e) => (e.id === eventId ? { ...e, ...updates } : e)) })
+      refreshUser: async () => {
+        try {
+          const user = await api.me()
+          set({ currentUser: user })
+        } catch (e) {
+          clearToken()
+          set({ currentUser: null, token: null })
+        }
       },
 
-      deleteEvent: (eventId) => {
-        const { events } = get()
-        set({ events: events.filter((e) => e.id !== eventId) })
+      updateCurrentUser: async (data) => {
+        try {
+          const user = await api.updateMe(data)
+          set({ currentUser: user })
+          return { ok: true }
+        } catch (e) {
+          return { error: e.data?.error || 'Error al actualizar' }
+        }
       },
 
-      // Auto-update event status based on time
-      syncEventStatuses: () => {
-        const { events } = get()
-        const now = new Date()
-        const updated = events.map((e) => {
-          const start = new Date(e.date)
-          const end = new Date(e.endDate)
-          if (now >= start && now <= end) return { ...e, status: 'active' }
-          if (now > end) return { ...e, status: 'ended' }
-          return { ...e, status: 'upcoming' }
-        })
-        set({ events: updated })
+      // ── Routes ────────────────────────────────────────────────────────────
+      routes: [],
+      routesLoading: false,
+
+      fetchRoutes: async (city) => {
+        set({ routesLoading: true })
+        try {
+          const routes = await api.getRoutes(city)
+          set({ routes, routesLoading: false })
+        } catch (e) {
+          set({ routesLoading: false })
+        }
+      },
+
+      createRoute: async (data) => {
+        try {
+          const route = await api.createRoute(data)
+          set((s) => ({ routes: [...s.routes, route] }))
+          return { route }
+        } catch (e) {
+          return { error: e.data?.error || 'Error al crear la ruta' }
+        }
+      },
+
+      updateRoute: async (id, data) => {
+        try {
+          const route = await api.updateRoute(id, data)
+          set((s) => ({ routes: s.routes.map((r) => r.id === id ? route : r) }))
+          return { route }
+        } catch (e) {
+          return { error: e.data?.error || 'Error al actualizar' }
+        }
+      },
+
+      deleteRoute: async (id) => {
+        try {
+          await api.deleteRoute(id)
+          set((s) => ({ routes: s.routes.filter((r) => r.id !== id) }))
+          return { ok: true }
+        } catch (e) {
+          return { error: e.data?.error || 'Error al eliminar' }
+        }
+      },
+
+      joinRoute: async (id) => {
+        try {
+          const res = await api.joinRoute(id)
+          // Refresh route to get updated user_status
+          const route = await api.getRoute(id)
+          set((s) => ({ routes: s.routes.map((r) => r.id === id ? route : r) }))
+          return { ok: true }
+        } catch (e) {
+          if (e.status === 402) {
+            return { error: 'subscription_required', payment_url: e.data?.payment_url }
+          }
+          return { error: e.data?.error || 'Error al solicitar' }
+        }
       },
 
       // ── Participants ──────────────────────────────────────────────────────
-      // { id, eventId, userId, status: 'pending'|'approved'|'rejected', joinedAt }
-      participants: [],
+      participants: {},  // { routeId: [...] }
 
-      requestJoin: (eventId) => {
-        const { participants, currentUser } = get()
-        const exists = participants.find(
-          (p) => p.eventId === eventId && p.userId === currentUser.id
-        )
-        if (exists) return { error: 'Ya has solicitado unirte a este evento' }
-        const entry = {
-          id: `part-${Date.now()}`,
-          eventId,
-          userId: currentUser.id,
-          status: 'pending',
-          joinedAt: new Date().toISOString(),
+      fetchParticipants: async (routeId) => {
+        try {
+          const list = await api.getParticipants(routeId)
+          set((s) => ({ participants: { ...s.participants, [routeId]: list } }))
+        } catch (e) {}
+      },
+
+      updateParticipant: async (routeId, partId, status) => {
+        try {
+          await api.updateParticipant(routeId, partId, status)
+          await get().fetchParticipants(routeId)
+          return { ok: true }
+        } catch (e) {
+          return { error: e.data?.error || 'Error' }
         }
-        set({ participants: [...participants, entry] })
-        // Add notification for admin
-        get().addNotification({
-          userId: 'admin-001',
-          type: 'join_request',
-          message: `${currentUser.name} quiere unirse a un evento`,
-          eventId,
-          fromUserId: currentUser.id,
-        })
-        return { ok: true }
       },
 
-      updateParticipant: (participantId, status) => {
-        const { participants } = get()
-        const part = participants.find((p) => p.id === participantId)
-        if (!part) return
-        set({
-          participants: participants.map((p) =>
-            p.id === participantId ? { ...p, status } : p
-          ),
-        })
-        // Notify the user
-        const msg =
-          status === 'approved'
-            ? '¡Has sido aceptado en el evento! Ya puedes acceder al chat y fotos.'
-            : 'Tu solicitud para el evento ha sido rechazada.'
-        get().addNotification({
-          userId: part.userId,
-          type: status === 'approved' ? 'approved' : 'rejected',
-          message: msg,
-          eventId: part.eventId,
-        })
+      // ── Messages ──────────────────────────────────────────────────────────
+      messages: {},  // { routeId: [...] }
+
+      fetchMessages: async (routeId) => {
+        try {
+          const list = await api.getMessages(routeId)
+          set((s) => ({ messages: { ...s.messages, [routeId]: list } }))
+        } catch (e) {}
       },
 
-      getParticipantStatus: (eventId, userId) => {
-        const { participants } = get()
-        return participants.find((p) => p.eventId === eventId && p.userId === userId)
-      },
-
-      getEventParticipants: (eventId) => {
-        const { participants, users } = get()
-        return participants
-          .filter((p) => p.eventId === eventId)
-          .map((p) => ({
-            ...p,
-            user: users.find((u) => u.id === p.userId),
+      sendMessage: async (routeId, text) => {
+        try {
+          const msg = await api.sendMessage(routeId, text)
+          set((s) => ({
+            messages: {
+              ...s.messages,
+              [routeId]: [...(s.messages[routeId] || []), msg],
+            },
           }))
-      },
-
-      // ── Chat ──────────────────────────────────────────────────────────────
-      // { id, eventId, userId, text, imageUrl, createdAt }
-      messages: [],
-
-      sendMessage: (eventId, text, imageUrl = null) => {
-        const { messages, currentUser, events } = get()
-        const event = events.find((e) => e.id === eventId)
-        if (!event || event.status === 'ended') return { error: 'El chat está cerrado' }
-        const msg = {
-          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          eventId,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          text,
-          imageUrl,
-          createdAt: new Date().toISOString(),
+          return { ok: true }
+        } catch (e) {
+          return { error: e.data?.error || 'Error al enviar' }
         }
-        set({ messages: [...messages, msg] })
-        return { ok: true }
-      },
-
-      getEventMessages: (eventId) => {
-        const { messages } = get()
-        return messages.filter((m) => m.eventId === eventId)
-      },
-
-      // ── Photos ────────────────────────────────────────────────────────────
-      // { id, eventId, userId, url, caption, createdAt }
-      photos: [],
-
-      addPhoto: (eventId, url, caption = '') => {
-        const { photos, currentUser } = get()
-        const photo = {
-          id: `photo-${Date.now()}`,
-          eventId,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          url,
-          caption,
-          createdAt: new Date().toISOString(),
-        }
-        set({ photos: [...photos, photo] })
-        return photo
-      },
-
-      getEventPhotos: (eventId) => {
-        const { photos } = get()
-        return photos.filter((p) => p.eventId === eventId)
       },
 
       // ── Notifications ─────────────────────────────────────────────────────
-      // { id, userId, type, message, eventId, read, createdAt }
       notifications: [],
 
-      addNotification: (data) => {
-        const { notifications } = get()
-        const notif = {
-          id: `notif-${Date.now()}`,
-          ...data,
-          read: false,
-          createdAt: new Date().toISOString(),
-        }
-        set({ notifications: [...notifications, notif] })
+      fetchNotifications: async () => {
+        try {
+          const list = await api.getNotifications()
+          set({ notifications: list })
+        } catch (e) {}
       },
 
-      markNotificationRead: (notifId) => {
-        const { notifications } = get()
-        set({
-          notifications: notifications.map((n) =>
-            n.id === notifId ? { ...n, read: true } : n
-          ),
-        })
+      markNotificationRead: async (id) => {
+        try {
+          await api.markRead(id)
+          set((s) => ({
+            notifications: s.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
+          }))
+        } catch (e) {}
       },
 
-      markAllNotificationsRead: (userId) => {
-        const { notifications } = get()
-        set({
-          notifications: notifications.map((n) =>
-            n.userId === userId ? { ...n, read: true } : n
-          ),
-        })
+      markAllNotificationsRead: async () => {
+        try {
+          await api.markAllRead()
+          set((s) => ({
+            notifications: s.notifications.map((n) => ({ ...n, read: true })),
+          }))
+        } catch (e) {}
       },
 
-      getUserNotifications: (userId) => {
-        const { notifications } = get()
-        return notifications
-          .filter((n) => n.userId === userId)
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      getUnreadCount: () => {
+        return get().notifications.filter((n) => !n.read).length
       },
 
-      getUnreadCount: (userId) => {
-        const { notifications } = get()
-        return notifications.filter((n) => n.userId === userId && !n.read).length
+      // ── Admin users ───────────────────────────────────────────────────────
+      adminUsers: [],
+
+      fetchAdminUsers: async () => {
+        try {
+          const users = await api.getUsers()
+          set({ adminUsers: users })
+        } catch (e) {}
       },
     }),
     {
-      name: 'blaker-storage',
-      version: 2,
-      // Don't persist passwords in currentUser
+      name: 'rutillas-storage',
+      version: 1,
       partialize: (state) => ({
-        ...state,
-        currentUser: state.currentUser
-          ? { ...state.currentUser, password: undefined }
-          : null,
+        currentUser: state.currentUser,
+        token: state.token,
       }),
     }
   )

@@ -109,8 +109,7 @@ export default function AuthPage() {
     if (!form.password) errs.password = 'Contraseña requerida'
     if (Object.keys(errs).length) { setErrors(errs); return }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 300))
-    const result = login(form.email, form.password)
+    const result = await login(form.email, form.password)
     setLoading(false)
     if (result.error) {
       setErrors({ general: result.error })
@@ -130,14 +129,24 @@ export default function AuthPage() {
     e.preventDefault()
     if (!validateStep3()) return
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 300))
-    const result = register(form)
+
+    // Try to get geolocation
+    let latitude = null, longitude = null
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+      )
+      latitude = pos.coords.latitude
+      longitude = pos.coords.longitude
+    } catch (_) {}
+
+    const result = await register({ ...form, latitude, longitude })
     setLoading(false)
     if (result.error) {
       setErrors({ general: result.error })
       setStep(1)
     } else {
-      toast('¡Cuenta creada! Bienvenido a BLAKER 🏍️', 'success')
+      toast('¡Cuenta creada! Bienvenido a RUTILLAS 🏍️', 'success')
       navigate('/')
     }
   }

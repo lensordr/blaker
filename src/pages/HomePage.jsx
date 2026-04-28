@@ -5,15 +5,13 @@ import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
 import BlakerLogo from '../components/BlakerLogo'
 import { IconMapPin, IconClock, IconUsers, IconMoto } from '../components/Icons'
-
 function StatusBadge({ status }) {
   const labels = { upcoming: 'Próximo', active: 'En curso', ended: 'Finalizado' }
   return <span className={`badge badge-${status}`}>{labels[status]}</span>
 }
 
 function EventCard({ event, onClick }) {
-  const getEventParticipants = useStore((s) => s.getEventParticipants)
-  const approved = getEventParticipants(event.id).filter((p) => p.status === 'approved').length
+  const approved = event.approved_count || 0
 
   return (
     <div className="event-card" onClick={onClick} role="button" tabIndex={0}
@@ -106,18 +104,19 @@ function EventCard({ event, onClick }) {
 export default function HomePage() {
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
-  const events = useStore((s) => s.events)
-  const syncEventStatuses = useStore((s) => s.syncEventStatuses)
+  const routes = useStore((s) => s.routes)
+  const fetchRoutes = useStore((s) => s.fetchRoutes)
+  const routesLoading = useStore((s) => s.routesLoading)
 
   useEffect(() => {
-    syncEventStatuses()
-    const interval = setInterval(syncEventStatuses, 60_000)
+    fetchRoutes()
+    const interval = setInterval(fetchRoutes, 60_000)
     return () => clearInterval(interval)
-  }, [syncEventStatuses])
+  }, [fetchRoutes])
 
-  const activeEvents = events.filter((e) => e.status === 'active')
-  const upcomingEvents = events.filter((e) => e.status === 'upcoming')
-  const endedEvents = events.filter((e) => e.status === 'ended')
+  const activeEvents = routes.filter((e) => e.status === 'active')
+  const upcomingEvents = routes.filter((e) => e.status === 'upcoming' || e.status === 'full')
+  const endedEvents = routes.filter((e) => e.status === 'ended')
 
   return (
     <div style={{ flex: 1, paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
@@ -185,11 +184,16 @@ export default function HomePage() {
           </div>
         )}
 
-        {events.length === 0 && (
+        {routes.length === 0 && !routesLoading && (
           <div className="empty-state">
             <IconMoto size={56} />
-            <p className="empty-state-title">Sin eventos aún</p>
-            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>El admin publicará los próximos eventos aquí</p>
+            <p className="empty-state-title">Sin rutas aún</p>
+            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>El admin publicará las próximas rutas aquí</p>
+          </div>
+        )}
+        {routesLoading && routes.length === 0 && (
+          <div className="empty-state">
+            <span className="spinner" />
           </div>
         )}
       </div>

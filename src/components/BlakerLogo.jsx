@@ -6,17 +6,11 @@ export default function BlakerLogo({ size = 48, showTagline = false, center = fa
       alignItems: center ? 'center' : 'flex-start',
       gap: 6,
     }}>
-      {/* Pure CSS text logo — always renders correctly */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: 0,
-        lineHeight: 1,
-      }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 0, lineHeight: 1 }}>
         {/* Speed slash */}
         <span style={{
           display: 'inline-block',
-          width: size * 0.12,
+          width: size * 0.1,
           height: size * 0.85,
           background: 'var(--accent)',
           borderRadius: 2,
@@ -34,7 +28,7 @@ export default function BlakerLogo({ size = 48, showTagline = false, center = fa
           color: '#111111',
           lineHeight: 1,
         }}>
-          BL
+          RUT
         </span>
         <span style={{
           fontFamily: "'Barlow Condensed', sans-serif",
@@ -45,7 +39,7 @@ export default function BlakerLogo({ size = 48, showTagline = false, center = fa
           color: 'var(--accent)',
           lineHeight: 1,
         }}>
-          A
+          I
         </span>
         <span style={{
           fontFamily: "'Barlow Condensed', sans-serif",
@@ -56,7 +50,7 @@ export default function BlakerLogo({ size = 48, showTagline = false, center = fa
           color: '#111111',
           lineHeight: 1,
         }}>
-          KER
+          LLAS
         </span>
       </div>
 
