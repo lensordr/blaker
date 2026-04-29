@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useStore from '../store/useStore'
 import { IconLogout, IconShield, IconMapPin, IconCalendar, IconSettings, IconEdit } from '../components/Icons'
@@ -29,19 +29,19 @@ const HEARD_FROM_LABELS = { instagram: 'Instagram', tiktok: 'TikTok', friends: '
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────
 function EditProfileModal({ onClose }) {
   const currentUser = useStore((s) => s.currentUser)
-  const updateUser = useStore((s) => s.updateUser)
+  const updateCurrentUser = useStore((s) => s.updateCurrentUser)
   const toast = useToast()
 
   const [form, setForm] = useState({
-    name: currentUser?.name || '',
+    first_name: currentUser?.first_name || '',
+    last_name: currentUser?.last_name || '',
     email: currentUser?.email || '',
     location: currentUser?.location || '',
-    motoType: currentUser?.motoType || '',
-    motoModel: currentUser?.motoModel || '',
+    moto_type: currentUser?.moto_type || '',
+    moto_model: currentUser?.moto_model || '',
     experience: currentUser?.experience || '',
-    instaHandle: currentUser?.instaHandle || '',
-    needsFood: currentUser?.needsFood ?? false,
-    isSubscriber: currentUser?.isSubscriber ?? false,
+    insta_handle: currentUser?.insta_handle || '',
+    needs_food: currentUser?.needs_food ?? false,
     newPassword: '',
   })
   const [errors, setErrors] = useState({})
@@ -55,34 +55,36 @@ function EditProfileModal({ onClose }) {
   const handleSave = async (e) => {
     e.preventDefault()
     const errs = {}
-    if (!form.name.trim()) errs.name = 'Nombre requerido'
+    if (!form.first_name.trim()) errs.first_name = 'Nombre requerido'
     if (!form.email.trim()) errs.email = 'Email requerido'
     if (form.newPassword && form.newPassword.length < 6) errs.newPassword = 'Mínimo 6 caracteres'
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 300))
-
     const updates = {
-      name: form.name.trim(),
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
       email: form.email.trim(),
       location: form.location.trim(),
-      motoType: form.motoType,
-      motoModel: form.motoModel.trim(),
+      moto_type: form.moto_type,
+      moto_model: form.moto_model.trim(),
       experience: form.experience,
-      instaHandle: form.instaHandle.trim(),
-      needsFood: form.needsFood,
-      isSubscriber: form.isSubscriber,
+      insta_handle: form.insta_handle.trim(),
+      needs_food: form.needs_food,
     }
     if (form.newPassword) updates.password = form.newPassword
 
-    updateUser(currentUser.id, updates)
+    const result = await updateCurrentUser(updates)
     setSaving(false)
-    toast('Perfil actualizado ✓', 'success')
-    onClose()
+    if (result?.error) {
+      toast(result.error, 'error')
+    } else {
+      toast('Perfil actualizado ✓', 'success')
+      onClose()
+    }
   }
 
-  const isAdmin = currentUser?.role === 'admin'
+  const isAdmin = currentUser?.is_staff
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -106,10 +108,16 @@ function EditProfileModal({ onClose }) {
           <p className="section-title" style={{ marginBottom: 4 }}>Información personal</p>
 
           <div className="form-group">
-            <label className="form-label">Nombre completo</label>
-            <input className="form-input" type="text" value={form.name}
-              onChange={(e) => set('name', e.target.value)} placeholder="Tu nombre" />
-            {errors.name && <span className="form-error">{errors.name}</span>}
+            <label className="form-label">Nombre</label>
+            <input className="form-input" type="text" value={form.first_name}
+              onChange={(e) => set('first_name', e.target.value)} placeholder="Tu nombre" />
+            {errors.first_name && <span className="form-error">{errors.first_name}</span>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Apellido</label>
+            <input className="form-input" type="text" value={form.last_name}
+              onChange={(e) => set('last_name', e.target.value)} placeholder="Tu apellido" />
           </div>
 
           <div className="form-group">
@@ -129,8 +137,8 @@ function EditProfileModal({ onClose }) {
 
           <div className="form-group">
             <label className="form-label">Instagram (opcional)</label>
-            <input className="form-input" type="text" value={form.instaHandle}
-              onChange={(e) => set('instaHandle', e.target.value)} placeholder="@tuusuario" />
+            <input className="form-input" type="text" value={form.insta_handle}
+              onChange={(e) => set('insta_handle', e.target.value)} placeholder="@tuusuario" />
           </div>
 
           {/* ── Moto info (non-admin only) ── */}
@@ -141,8 +149,8 @@ function EditProfileModal({ onClose }) {
 
               <div className="form-group">
                 <label className="form-label">Tipo de moto</label>
-                <select className="form-select" value={form.motoType}
-                  onChange={(e) => set('motoType', e.target.value)}>
+                <select className="form-select" value={form.moto_type}
+                  onChange={(e) => set('moto_type', e.target.value)}>
                   <option value="">Selecciona el tipo...</option>
                   {MOTO_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -152,8 +160,8 @@ function EditProfileModal({ onClose }) {
 
               <div className="form-group">
                 <label className="form-label">Marca y modelo</label>
-                <input className="form-input" type="text" value={form.motoModel}
-                  onChange={(e) => set('motoModel', e.target.value)} placeholder="Yamaha MT-07..." />
+                <input className="form-input" type="text" value={form.moto_model}
+                  onChange={(e) => set('moto_model', e.target.value)} placeholder="Yamaha MT-07..." />
               </div>
 
               <div className="form-group">
@@ -171,7 +179,7 @@ function EditProfileModal({ onClose }) {
                 <div className="toggle-row">
                   <span className="toggle-label">¿Necesitas comida en el evento?</span>
                   <label className="toggle">
-                    <input type="checkbox" checked={form.needsFood} onChange={(e) => set('needsFood', e.target.checked)} />
+                    <input type="checkbox" checked={form.needs_food} onChange={(e) => set('needs_food', e.target.checked)} />
                     <span className="toggle-slider" />
                   </label>
                 </div>
@@ -281,22 +289,25 @@ export default function ProfilePage() {
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
   const logout = useStore((s) => s.logout)
-  const participants = useStore((s) => s.participants)
-  const events = useStore((s) => s.events)
+  const routes = useStore((s) => s.routes)
+  const fetchRoutes = useStore((s) => s.fetchRoutes)
+  const updateCurrentUser = useStore((s) => s.updateCurrentUser)
+  const refreshUser = useStore((s) => s.refreshUser)
   const toast = useToast()
   const [showEdit, setShowEdit] = useState(false)
 
-  const myParticipations = participants.filter((p) => p.userId === currentUser?.id)
-  const approvedEvents = myParticipations.filter((p) => p.status === 'approved')
-  const pendingEvents = myParticipations.filter((p) => p.status === 'pending')
+  useEffect(() => {
+    refreshUser()
+    if (!routes.length) fetchRoutes()
+  }, [])
 
-  const myApprovedEvents = approvedEvents
-    .map((p) => events.find((e) => e.id === p.eventId))
-    .filter(Boolean)
+  // Routes the user is approved for — derived from routes list using user_status
+  const myRoutes = routes.filter((r) => r.user_status === 'approved')
     .sort((a, b) => new Date(b.date) - new Date(a.date))
-
-  const completedRoutes = myApprovedEvents.filter((e) => e.status === 'ended').length
-  const upcomingRoutes = myApprovedEvents.filter((e) => e.status === 'upcoming' || e.status === 'active').length
+  const completedRoutes = myRoutes.filter((r) => r.status === 'ended').length
+  const upcomingRoutes = myRoutes.filter((r) => r.status === 'upcoming' || r.status === 'active').length
+  // Use API-provided counts if available
+  const totalRoutes = currentUser?.routes_count ?? myRoutes.length
 
   const handleLogout = () => {
     logout()
@@ -304,7 +315,10 @@ export default function ProfilePage() {
     navigate('/auth')
   }
 
-  const initials = currentUser?.name?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
+  const name = currentUser?.first_name
+    ? `${currentUser.first_name} ${currentUser.last_name || ''}`.trim()
+    : currentUser?.username || ''
+  const initials = name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
 
   return (
     <div style={{ flex: 1, paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
@@ -383,117 +397,77 @@ export default function ProfilePage() {
       <div style={{ padding: '20px 16px', maxWidth: 480, margin: '0 auto' }}>
 
         {/* ── Stats (non-admin) ── */}
-        {currentUser?.role !== 'admin' && (
+        {!currentUser?.is_staff && (
           <div style={{ marginBottom: 24 }}>
             <p className="section-title">Mis rutas</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <StatCard value={approvedEvents.length} label="Rutas totales" accent />
-              <StatCard value={completedRoutes} label="Completadas" />
+              <StatCard value={totalRoutes} label="Rutas totales" accent />
+              <StatCard value={currentUser?.completed_routes ?? completedRoutes} label="Completadas" />
               <StatCard value={upcomingRoutes} label="Próximas" />
             </div>
           </div>
         )}
 
         {/* ── Rider info (non-admin) ── */}
-        {currentUser?.role !== 'admin' && (
+        {!currentUser?.is_staff && (
           <div style={{ marginBottom: 24 }}>
             <p className="section-title">Mi perfil rider</p>
-            <div style={{
-              background: 'var(--bg-2)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)', padding: '4px 16px', boxShadow: 'var(--shadow-sm)',
-            }}>
-              <InfoRow label="Tipo de moto" value={MOTO_TYPE_LABELS[currentUser?.motoType]} />
-              <InfoRow label="Moto" value={currentUser?.motoModel} highlight />
+            <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '4px 16px', boxShadow: 'var(--shadow-sm)' }}>
+              <InfoRow label="Tipo de moto" value={MOTO_TYPE_LABELS[currentUser?.moto_type]} />
+              <InfoRow label="Moto" value={currentUser?.moto_model} highlight />
               <InfoRow label="Ubicación" value={currentUser?.location} />
               <InfoRow label="Nivel" value={EXPERIENCE_LABELS[currentUser?.experience]} />
-              <InfoRow label="Comida" value={currentUser?.needsFood ? 'Sí necesita' : 'No necesita'} />
-              <InfoRow label="Suscriptor" value={currentUser?.isSubscriber ? '⭐ Sí' : 'No'} />
-              {/* Instagram row */}
-              {currentUser?.instaHandle && (
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 0', borderBottom: '1px solid var(--border)',
-                }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                    Instagram
-                  </span>
-                  <InstagramPill handle={currentUser.instaHandle} />
+              <InfoRow label="Comida" value={currentUser?.needs_food ? 'Sí necesita' : 'No necesita'} />
+              <InfoRow label="Suscriptor" value={currentUser?.is_subscribed ? '⭐ Sí' : currentUser?.is_free_user ? '🆓 Usuario gratuito' : 'No'} />
+              {currentUser?.insta_handle && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Instagram</span>
+                  <InstagramPill handle={currentUser.insta_handle} />
                 </div>
               )}
-              <InfoRow label="Nos conoció por" value={HEARD_FROM_LABELS[currentUser?.heardFrom]} />
+              <InfoRow label="Nos conoció por" value={HEARD_FROM_LABELS[currentUser?.heard_from]} />
             </div>
           </div>
         )}
 
-        {/* ── Admin quick info ── */}
-        {currentUser?.role === 'admin' && currentUser?.instaHandle && (
+        {/* ── Admin instagram ── */}
+        {currentUser?.is_staff && currentUser?.insta_handle && (
           <div style={{ marginBottom: 24 }}>
             <p className="section-title">Redes sociales</p>
-            <div style={{
-              background: 'var(--bg-2)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)', padding: '16px', boxShadow: 'var(--shadow-sm)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
+            <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Instagram</span>
-              <InstagramPill handle={currentUser.instaHandle} />
+              <InstagramPill handle={currentUser.insta_handle} />
             </div>
           </div>
         )}
 
-        {/* ── Route history (non-admin) ── */}
-        {myApprovedEvents.length > 0 && (
+        {/* ── Route history ── */}
+        {myRoutes.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <p className="section-title">Historial de rutas</p>
             <div className="stack">
-              {myApprovedEvents.map((e) => (
-                <div key={e.id} onClick={() => navigate(`/events/${e.id}`)} style={{
-                  background: 'var(--bg-2)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-lg)', padding: '14px 16px',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
-                  boxShadow: 'var(--shadow-sm)',
-                }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 'var(--radius-sm)', flexShrink: 0,
-                    background: e.status === 'ended' ? 'var(--bg-3)' : 'var(--accent-dim)',
-                    border: `1px solid ${e.status === 'ended' ? 'var(--border)' : 'var(--accent-border)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <IconCalendar size={18} style={{ color: e.status === 'ended' ? 'var(--text-3)' : 'var(--accent)' }} />
+              {myRoutes.map((r) => (
+                <div key={r.id} onClick={() => navigate(`/events/${r.id}`)} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', flexShrink: 0, background: r.status === 'ended' ? 'var(--bg-3)' : 'var(--accent-dim)', border: `1px solid ${r.status === 'ended' ? 'var(--border)' : 'var(--accent-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconCalendar size={18} style={{ color: r.status === 'ended' ? 'var(--text-3)' : 'var(--accent)' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{
-                      fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 900,
-                      textTransform: 'uppercase', letterSpacing: '0.02em',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {e.title}
+                    <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.title}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                       <IconMapPin size={11} style={{ color: 'var(--text-3)' }} />
-                      <p style={{ fontSize: 12, color: 'var(--text-3)' }}>{e.location}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-3)' }}>{r.city}</p>
                     </div>
                     <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>
-                      {format(new Date(e.date), "d MMM yyyy", { locale: es })}
+                      {format(new Date(r.date), "d MMM yyyy", { locale: es })}
                     </p>
                   </div>
-                  <span className={`badge badge-${e.status}`}>
-                    {e.status === 'active' ? 'En curso' : e.status === 'upcoming' ? 'Próximo' : 'Finalizado'}
+                  <span className={`badge badge-${r.status}`}>
+                    {r.status === 'active' ? 'En curso' : r.status === 'upcoming' ? 'Próximo' : 'Finalizado'}
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Pending */}
-        {pendingEvents.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{
-              background: 'var(--yellow-dim)', border: '1px solid rgba(217,119,6,0.2)',
-              borderRadius: 'var(--radius)', padding: '12px 16px',
-              fontSize: 13, color: 'var(--yellow)', fontWeight: 600,
-            }}>
-              {pendingEvents.length} solicitud{pendingEvents.length > 1 ? 'es' : ''} esperando aprobación
             </div>
           </div>
         )}

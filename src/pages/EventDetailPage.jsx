@@ -1,52 +1,57 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
 import {
   IconBack, IconMapPin, IconClock, IconUsers, IconLink,
-  IconChat, IconCamera, IconSend, IconImage, IconMoto
+  IconChat, IconSend, IconImage, IconCamera
 } from '../components/Icons'
 import { useToast } from '../components/Toast'
 
-function StatusBadge({ status }) {
-  const labels = { upcoming: 'Próximo', active: 'En curso', ended: 'Finalizado' }
-  return <span className={`badge badge-${status}`}>{labels[status]}</span>
-}
+const STATUS_LABELS = { upcoming: 'Próximo', active: 'En curso', full: 'Completo', ended: 'Finalizado' }
 
 // ─── Chat Tab ─────────────────────────────────────────────────────────────────
-function ChatTab({ event }) {
+function ChatTab({ route }) {
   const currentUser = useStore((s) => s.currentUser)
-  const getEventMessages = useStore((s) => s.getEventMessages)
+  const messages = useStore((s) => s.messages[route.id] || [])
+  const fetchMessages = useStore((s) => s.fetchMessages)
   const sendMessage = useStore((s) => s.sendMessage)
-  const messages = getEventMessages(event.id)
   const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
   const toast = useToast()
+
+  useEffect(() => {
+    fetchMessages(route.id)
+    const interval = setInterval(() => fetchMessages(route.id), 5000)
+    return () => clearInterval(interval)
+  }, [route.id, fetchMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = text.trim()
-    if (!trimmed) return
-    const result = sendMessage(event.id, trimmed)
-    if (result?.error) {
-      toast(result.error, 'error')
-    } else {
-      setText('')
-    }
+    if (!trimmed || sending) return
+    setSending(true)
+    setText('')
+    const result = await sendMessage(route.id, trimmed)
+    setSending(false)
+    if (result?.error) toast(result.error, 'error')
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const isClosed = event.status === 'ended'
+  const isClosed = route.status === 'ended'
+  const getName = (msg) => {
+    const u = msg.user
+    if (!u) return '?'
+    return u.first_name || u.username || '?'
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -59,23 +64,18 @@ function ChatTab({ event }) {
           </div>
         )}
         {messages.map((msg) => {
-          const isOwn = msg.userId === currentUser?.id
+          const isOwn = msg.user?.id === currentUser?.id
           return (
             <div key={msg.id} className={`chat-bubble${isOwn ? ' own' : ''}`}>
               {!isOwn && (
-                <div className="avatar avatar-sm">
-                  {msg.userName?.[0]?.toUpperCase()}
-                </div>
+                <div className="avatar avatar-sm">{getName(msg)[0]?.toUpperCase()}</div>
               )}
               <div>
-                {!isOwn && <div className="chat-bubble-name">{msg.userName}</div>}
+                {!isOwn && <div className="chat-bubble-name">{getName(msg)}</div>}
                 <div className="chat-bubble-content">
-                  {msg.imageUrl && (
-                    <img src={msg.imageUrl} alt="foto" className="chat-bubble-img" />
-                  )}
-                  {msg.text && <p className="chat-bubble-text">{msg.text}</p>}
+                  <p className="chat-bubble-text">{msg.text}</p>
                   <p className="chat-bubble-time">
-                    {format(new Date(msg.createdAt), 'HH:mm')}
+                    {format(new Date(msg.created_at), 'HH:mm')}
                   </p>
                 </div>
               </div>
@@ -86,15 +86,8 @@ function ChatTab({ event }) {
       </div>
 
       {isClosed ? (
-        <div style={{
-          padding: '12px 16px',
-          borderTop: '1px solid var(--border)',
-          textAlign: 'center',
-          fontSize: 13,
-          color: 'var(--text-3)',
-          background: 'var(--bg)',
-        }}>
-          El chat está cerrado — evento finalizado
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: 13, color: 'var(--text-3)', background: 'var(--bg-2)' }}>
+          El chat está cerrado — ruta finalizada
         </div>
       ) : (
         <div className="chat-input-bar">
@@ -106,12 +99,8 @@ function ChatTab({ event }) {
             onKeyDown={handleKeyDown}
             rows={1}
           />
-          <button
-            className="btn btn-primary btn-icon"
-            onClick={handleSend}
-            disabled={!text.trim()}
-            aria-label="Enviar mensaje"
-          >
+          <button className="btn btn-primary btn-icon" onClick={handleSend}
+            disabled={!text.trim() || sending} aria-label="Enviar">
             <IconSend size={18} />
           </button>
         </div>
@@ -121,25 +110,31 @@ function ChatTab({ event }) {
 }
 
 // ─── Photos Tab ───────────────────────────────────────────────────────────────
-function PhotosTab({ event }) {
-  const currentUser = useStore((s) => s.currentUser)
-  const getEventPhotos = useStore((s) => s.getEventPhotos)
-  const addPhoto = useStore((s) => s.addPhoto)
-  const photos = getEventPhotos(event.id)
+function PhotosTab({ route }) {
+  // Photos stored locally per-route (base64) — will migrate to Supabase Storage later
+  const [photos, setPhotos] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`photos_${route.id}`) || '[]') } catch { return [] }
+  })
   const [preview, setPreview] = useState(null)
   const fileRef = useRef(null)
   const toast = useToast()
+  const currentUser = useStore((s) => s.currentUser)
 
   const handleFile = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      toast('Solo se permiten imágenes', 'error')
-      return
-    }
+    if (!file.type.startsWith('image/')) { toast('Solo imágenes', 'error'); return }
     const reader = new FileReader()
     reader.onload = (ev) => {
-      addPhoto(event.id, ev.target.result, '')
+      const photo = {
+        id: Date.now(),
+        url: ev.target.result,
+        userName: currentUser?.first_name || currentUser?.username || 'Rider',
+        createdAt: new Date().toISOString(),
+      }
+      const updated = [photo, ...photos]
+      setPhotos(updated)
+      localStorage.setItem(`photos_${route.id}`, JSON.stringify(updated))
       toast('Foto publicada 📸', 'success')
     }
     reader.readAsDataURL(file)
@@ -148,64 +143,36 @@ function PhotosTab({ event }) {
 
   return (
     <div style={{ padding: '12px 0' }}>
-      {event.status !== 'ended' && (
+      {route.status !== 'ended' && (
         <div style={{ padding: '0 16px 12px' }}>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: 'none' }}
-            onChange={handleFile}
-          />
-          <button
-            className="btn btn-secondary btn-full"
-            onClick={() => fileRef.current?.click()}
-          >
-            <IconCamera size={18} />
-            Subir foto
+          <input ref={fileRef} type="file" accept="image/*" capture="environment"
+            style={{ display: 'none' }} onChange={handleFile} />
+          <button className="btn btn-secondary btn-full" onClick={() => fileRef.current?.click()}>
+            <IconCamera size={18} /> Subir foto
           </button>
         </div>
       )}
-
       {photos.length === 0 ? (
         <div className="empty-state">
           <IconImage size={40} />
           <p className="empty-state-title">Sin fotos aún</p>
-          {event.status !== 'ended' && (
-            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Sé el primero en compartir</p>
-          )}
         </div>
       ) : (
         <div className="photo-grid">
           {photos.map((p) => (
             <div key={p.id} className="photo-grid-item" onClick={() => setPreview(p)}>
-              <img src={p.url} alt={p.caption || 'Foto del evento'} loading="lazy" />
+              <img src={p.url} alt="foto" loading="lazy" />
             </div>
           ))}
         </div>
       )}
-
-      {/* Photo preview modal */}
       {preview && (
-        <div
-          className="modal-overlay"
-          onClick={() => setPreview(null)}
-          style={{ alignItems: 'center', padding: 16 }}
-        >
+        <div className="modal-overlay" onClick={() => setPreview(null)} style={{ alignItems: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: '100%' }}>
-            <img
-              src={preview.url}
-              alt={preview.caption}
-              style={{ width: '100%', borderRadius: 'var(--radius-lg)', maxHeight: '80dvh', objectFit: 'contain' }}
-            />
-            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                Por <strong>{preview.userName}</strong>
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                {format(new Date(preview.createdAt), 'dd MMM · HH:mm', { locale: es })}
-              </span>
+            <img src={preview.url} alt="" style={{ width: '100%', borderRadius: 'var(--radius-lg)', maxHeight: '80dvh', objectFit: 'contain' }} />
+            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Por <strong>{preview.userName}</strong></span>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{format(new Date(preview.createdAt), 'dd MMM · HH:mm', { locale: es })}</span>
             </div>
           </div>
         </div>
@@ -219,116 +186,85 @@ export default function EventDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
-  const events = useStore((s) => s.events)
-  const getParticipantStatus = useStore((s) => s.getParticipantStatus)
-  const requestJoin = useStore((s) => s.requestJoin)
-  const syncEventStatuses = useStore((s) => s.syncEventStatuses)
+  const routes = useStore((s) => s.routes)
+  const fetchRoutes = useStore((s) => s.fetchRoutes)
+  const joinRoute = useStore((s) => s.joinRoute)
   const [tab, setTab] = useState('info')
+  const [joining, setJoining] = useState(false)
   const toast = useToast()
 
-  useEffect(() => { syncEventStatuses() }, [syncEventStatuses])
+  useEffect(() => { if (!routes.length) fetchRoutes() }, [])
 
-  const event = events.find((e) => e.id === id)
-  if (!event) {
+  const route = routes.find((r) => r.id === parseInt(id) || r.id === id)
+
+  if (!route) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
-        <p style={{ color: 'var(--text-3)' }}>Evento no encontrado</p>
-        <button className="btn btn-ghost mt-16" onClick={() => navigate(-1)}>Volver</button>
+        <span className="spinner" style={{ margin: '40px auto', display: 'block' }} />
       </div>
     )
   }
 
-  const participation = getParticipantStatus(event.id, currentUser?.id)
-  const isApproved = participation?.status === 'approved' || currentUser?.role === 'admin'
-  const canAccessChat = isApproved && event.status !== 'ended'
-  const canAccessPhotos = isApproved
+  const userStatus = route.user_status  // from API: null | 'pending' | 'approved' | 'rejected'
+  const isAdmin = currentUser?.is_staff
+  const isApproved = userStatus === 'approved' || isAdmin
+  const canChat = isApproved && route.status !== 'ended'
+  const canPhotos = isApproved
 
-  const handleJoin = () => {
-    const result = requestJoin(event.id)
-    if (result?.error) {
+  const handleJoin = async () => {
+    setJoining(true)
+    const result = await joinRoute(route.id)
+    setJoining(false)
+    if (result?.error === 'subscription_required') {
+      toast('Necesitas suscripción para unirte', 'error')
+      setTimeout(() => window.open(result.payment_url, '_blank'), 800)
+    } else if (result?.error) {
       toast(result.error, 'error')
     } else {
-      toast('Solicitud enviada. El admin la revisará pronto.', 'success')
+      toast('Solicitud enviada ✓ El admin la revisará pronto', 'success')
     }
   }
 
   const tabs = [
     { key: 'info', label: 'Info' },
-    ...(canAccessChat ? [{ key: 'chat', label: 'Chat' }] : []),
-    ...(canAccessPhotos ? [{ key: 'photos', label: 'Fotos' }] : []),
+    ...(canChat ? [{ key: 'chat', label: 'Chat' }] : []),
+    ...(canPhotos ? [{ key: 'photos', label: 'Fotos' }] : []),
   ]
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100dvh',
-      paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
       {/* Top bar */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--border)',
-        background: 'rgba(245,245,245,0.95)',
-        backdropFilter: 'blur(20px)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+        borderBottom: '1px solid var(--border)', background: 'rgba(245,245,245,0.95)',
+        backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 10,
       }}>
         <button className="btn btn-ghost btn-icon" onClick={() => navigate(-1)} aria-label="Volver">
           <IconBack />
         </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 20,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            letterSpacing: '0.03em',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
-            {event.title}
-          </h1>
-        </div>
-        <span className={`badge badge-${event.status}`}>
-          {event.status === 'active' ? (
-            <><span className="live-dot" style={{ width: 6, height: 6 }} /> En curso</>
-          ) : event.status === 'upcoming' ? 'Próximo' : 'Finalizado'}
+        <h1 style={{
+          flex: 1, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20,
+          fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.03em',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {route.title}
+        </h1>
+        <span className={`badge badge-${route.status}`}>
+          {route.status === 'active' ? <><span className="live-dot" style={{ width: 6, height: 6 }} /> En curso</> : STATUS_LABELS[route.status]}
         </span>
       </div>
 
       {/* Tab bar */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--bg)',
-        padding: '0 16px',
-      }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)', padding: '0 16px' }}>
         {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              color: tab === t.key ? 'var(--accent)' : 'var(--text-3)',
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-              borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
-              marginBottom: -1,
-              transition: 'color 0.15s',
-            }}
-          >
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '12px 16px', border: 'none', background: 'transparent',
+            color: tab === t.key ? 'var(--accent)' : 'var(--text-3)',
+            fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, fontWeight: 700,
+            letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+            borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
+            marginBottom: -1, transition: 'color 0.15s',
+          }}>
             {t.label}
           </button>
         ))}
@@ -338,36 +274,36 @@ export default function EventDetailPage() {
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {tab === 'info' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-            {/* Cover */}
+            {/* Cover banner */}
             <div className="event-card-cover-placeholder" style={{ borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
-              {event.coverImage ? (
-                <img src={event.coverImage} alt={event.title} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-lg)' }} />
-              ) : (
-                <IconMoto size={56} style={{ opacity: 0.12 }} />
-              )}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 24px' }}>
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontStyle: 'italic', fontSize: 'clamp(28px, 8vw, 42px)', textTransform: 'uppercase', color: 'var(--accent)', textAlign: 'center', lineHeight: 1.05, opacity: 0.85 }}>
+                  {route.title}
+                </span>
+              </div>
             </div>
 
-            {/* Details */}
             <div className="stack">
+              {/* Details card */}
               <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
                 <div className="stack" style={{ gap: 10 }}>
                   <div className="event-card-info-row" style={{ fontSize: 14 }}>
                     <IconClock size={16} />
-                    <span>{format(new Date(event.date), "EEEE d 'de' MMMM yyyy · HH:mm", { locale: es })}</span>
+                    <span>{format(new Date(route.date), "EEEE d 'de' MMMM yyyy · HH:mm", { locale: es })}</span>
                   </div>
                   <div className="event-card-info-row" style={{ fontSize: 14 }}>
                     <IconMapPin size={16} />
-                    <span>{event.location}</span>
+                    <span>{route.city}{route.location_detail ? ` — ${route.location_detail}` : ''}</span>
                   </div>
-                  {event.routeUrl && (
+                  <div className="event-card-info-row" style={{ fontSize: 14 }}>
+                    <IconUsers size={16} />
+                    <span>{route.approved_count} / {route.max_participants} riders</span>
+                  </div>
+                  {route.route_url && (
                     <div className="event-card-info-row" style={{ fontSize: 14 }}>
                       <IconLink size={16} />
-                      <a
-                        href={event.routeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--accent)', textDecoration: 'none' }}
-                      >
+                      <a href={route.route_url} target="_blank" rel="noopener noreferrer"
+                        style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                         Ver ruta en Google Maps
                       </a>
                     </div>
@@ -375,60 +311,49 @@ export default function EventDetailPage() {
                 </div>
               </div>
 
-              {event.description && (
+              {route.description && (
                 <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
-                  <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>{event.description}</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>{route.description}</p>
                 </div>
               )}
 
               {/* Join / status */}
-              {currentUser?.role !== 'admin' && (
+              {!isAdmin && (
                 <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
-                  {!participation && event.status !== 'ended' && (
-                    <button className="btn btn-primary btn-full btn-lg" onClick={handleJoin}>
-                      Solicitar unirse
+                  {!userStatus && route.status !== 'ended' && (
+                    <button className="btn btn-primary btn-full btn-lg" onClick={handleJoin} disabled={joining}>
+                      {joining ? <span className="spinner" /> : 'Solicitar unirse'}
                     </button>
                   )}
-                  {participation?.status === 'pending' && (
+                  {userStatus === 'pending' && (
                     <div style={{ textAlign: 'center' }}>
                       <span className="badge badge-pending" style={{ fontSize: 13, padding: '6px 14px' }}>
                         Solicitud pendiente de aprobación
                       </span>
                     </div>
                   )}
-                  {participation?.status === 'approved' && (
+                  {userStatus === 'approved' && (
                     <div style={{ textAlign: 'center' }}>
                       <span className="badge badge-approved" style={{ fontSize: 13, padding: '6px 14px' }}>
-                        ✓ Aceptado en el evento
+                        ✓ Aceptado en la ruta
                       </span>
                     </div>
                   )}
-                  {participation?.status === 'rejected' && (
+                  {userStatus === 'rejected' && (
                     <div style={{ textAlign: 'center' }}>
                       <span className="badge badge-rejected" style={{ fontSize: 13, padding: '6px 14px' }}>
                         Solicitud rechazada
                       </span>
                     </div>
                   )}
-                  {event.status === 'ended' && !participation && (
-                    <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>
-                      Este evento ha finalizado
-                    </p>
+                  {route.status === 'ended' && !userStatus && (
+                    <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>Esta ruta ha finalizado</p>
                   )}
                 </div>
               )}
 
-              {/* Access hint */}
-              {!isApproved && participation?.status !== 'approved' && (
-                <div style={{
-                  background: 'var(--bg-3)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius)',
-                  padding: '12px 14px',
-                  fontSize: 13,
-                  color: 'var(--text-3)',
-                  textAlign: 'center',
-                }}>
+              {!isApproved && (
+                <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 14px', fontSize: 13, color: 'var(--text-3)', textAlign: 'center' }}>
                   El chat y las fotos están disponibles solo para participantes aprobados
                 </div>
               )}
@@ -436,13 +361,10 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        {tab === 'chat' && canAccessChat && (
-          <ChatTab event={event} />
-        )}
-
-        {tab === 'photos' && canAccessPhotos && (
+        {tab === 'chat' && canChat && <ChatTab route={route} />}
+        {tab === 'photos' && canPhotos && (
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <PhotosTab event={event} />
+            <PhotosTab route={route} />
           </div>
         )}
       </div>
