@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useStore from '../store/useStore'
 import BlakerLogo from '../components/BlakerLogo'
 import { useToast } from '../components/Toast'
+import { api } from '../api'
 
 const MOTO_TYPE_OPTIONS = [
   { value: 'naked', label: 'Naked' },
@@ -47,13 +48,26 @@ function StepDots({ current, total }) {
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login')
-  const [step, setStep] = useState(1) // 1: account, 2: moto info, 3: preferences
+  const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
+  const [freeSpots, setFreeSpots] = useState(null)
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [showInstall, setShowInstall] = useState(false)
   const navigate = useNavigate()
   const login = useStore((s) => s.login)
   const register = useStore((s) => s.register)
   const toast = useToast()
+
+  useEffect(() => {
+    // Fetch free spots
+    api.getAppInfo().then((d) => setFreeSpots(d.free_spots_left)).catch(() => {})
+
+    // Capture PWA install prompt
+    const handler = (e) => { e.preventDefault(); setDeferredPrompt(e) }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
 
   const [form, setForm] = useState({
     name: '',
@@ -130,11 +144,11 @@ export default function AuthPage() {
     if (!validateStep3()) return
     setLoading(true)
 
-    // Try to get geolocation
+    // Get geolocation
     let latitude = null, longitude = null
     try {
       const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000, enableHighAccuracy: true })
       )
       latitude = pos.coords.latitude
       longitude = pos.coords.longitude
@@ -147,11 +161,51 @@ export default function AuthPage() {
       setStep(1)
     } else {
       toast('¡Cuenta creada! Bienvenido a RUTILLAS 🏍️', 'success')
-      navigate('/')
+      // Show PWA install prompt if available
+      if (deferredPrompt) {
+        setShowInstall(true)
+      } else {
+        navigate('/')
+      }
     }
   }
 
   const stepTitles = ['Tu cuenta', 'Tu moto', 'Preferencias']
+
+  // PWA install screen shown after registration
+  if (showInstall) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>📲</div>
+        <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>
+          Añade RUTILLAS a tu pantalla
+        </h2>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 32, lineHeight: 1.6, maxWidth: 320 }}>
+          Instala la app en tu móvil para acceder rápido a tus rutas, chat y notificaciones.
+        </p>
+        <button
+          className="btn btn-primary btn-lg btn-full"
+          style={{ maxWidth: 320, marginBottom: 12 }}
+          onClick={async () => {
+            if (deferredPrompt) {
+              deferredPrompt.prompt()
+              await deferredPrompt.userChoice
+              setDeferredPrompt(null)
+            }
+            navigate('/')
+          }}
+        >
+          📲 Añadir a pantalla de inicio
+        </button>
+        <button className="btn btn-ghost btn-full" style={{ maxWidth: 320 }} onClick={() => navigate('/')}>
+          Ahora no
+        </button>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 20 }}>
+          En iPhone: Safari → Compartir → Añadir a pantalla de inicio
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div style={{
@@ -174,9 +228,43 @@ export default function AuthPage() {
       }} />
 
       {/* Logo — centered */}
-      <div style={{ marginBottom: 32, position: 'relative', zIndex: 1 }}>
+      <div style={{ marginBottom: 24, position: 'relative', zIndex: 1 }}>
         <BlakerLogo size={44} showTagline center />
       </div>
+
+      {/* Free spots banner */}
+      {freeSpots !== null && freeSpots > 0 && mode === 'register' && (
+        <div style={{
+          width: '100%', maxWidth: 400, marginBottom: 16, zIndex: 1, position: 'relative',
+          background: 'linear-gradient(135deg, var(--accent-dim), rgba(232,50,10,0.05))',
+          border: '1px solid var(--accent-border)',
+          borderRadius: 'var(--radius-lg)', padding: '12px 16px',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 24 }}>🎁</span>
+          <div>
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 900, textTransform: 'uppercase', color: 'var(--accent)' }}>
+              {freeSpots} plazas gratuitas disponibles
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 1 }}>
+              Regístrate ahora y accede gratis si estás cerca
+            </p>
+          </div>
+        </div>
+      )}
+      {freeSpots === 0 && mode === 'register' && (
+        <div style={{
+          width: '100%', maxWidth: 400, marginBottom: 16, zIndex: 1, position: 'relative',
+          background: 'var(--bg-3)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)', padding: '12px 16px',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 20 }}>ℹ️</span>
+          <p style={{ fontSize: 13, color: 'var(--text-2)' }}>
+            Las plazas gratuitas están completas. Suscripción por <strong>3,99€/mes</strong>.
+          </p>
+        </div>
+      )}
 
       {/* Card */}
       <div style={{
@@ -354,6 +442,32 @@ export default function AuthPage() {
             {/* Step 3 — Preferences */}
             {step === 3 && (
               <form onSubmit={handleRegister} className="stack">
+                {/* Location permission request */}
+                <div style={{ background: 'var(--bg-3)', borderRadius: 'var(--radius)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>📍</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Permitir ubicación</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>Para recibir alertas de rutas cerca de ti y acceso gratuito</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={async () => {
+                      try {
+                        const pos = await new Promise((res, rej) =>
+                          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+                        )
+                        set('latitude', pos.coords.latitude)
+                        set('longitude', pos.coords.longitude)
+                        toast('Ubicación guardada ✓', 'success')
+                      } catch {
+                        toast('No se pudo obtener la ubicación', 'error')
+                      }
+                    }}
+                  >
+                    {form.latitude ? '✓ OK' : 'Permitir'}
+                  </button>
+                </div>
                 <div className="form-group">
                   <label className="form-label">¿Cómo nos conociste?</label>
                   <select className="form-select" value={form.heardFrom} onChange={(e) => set('heardFrom', e.target.value)}>

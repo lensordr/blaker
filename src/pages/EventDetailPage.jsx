@@ -241,17 +241,18 @@ export default function EventDetailPage() {
           <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6 }}>
             Suscríbete para ver la ubicación, detalles de la ruta, unirte al chat y mucho más.
           </p>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 28 }}>
-            Acceso completo a todas las rutas de RUTILLAS
-          </p>
+          <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '12px 20px', marginBottom: 24 }}>
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 900, color: 'var(--accent)' }}>3,99€ <span style={{ fontSize: 16, fontWeight: 600 }}>/mes</span></p>
+            <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>Acceso completo · Cancela cuando quieras</p>
+          </div>
           <a
             href="https://square.link/u/4AiXGpLe"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary btn-lg"
-            style={{ textDecoration: 'none', marginBottom: 12 }}
+            style={{ textDecoration: 'none', marginBottom: 12, width: '100%', maxWidth: 280 }}
           >
-            🏍️ Suscribirse ahora
+            🏍️ Suscribirse — 3,99€/mes
           </a>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
             Volver

@@ -52,6 +52,7 @@ export const api = {
 
   // Payment
   getPaymentLink: () => request('GET', '/payments/link/'),
+  getAppInfo: () => request('GET', '/health/', null, false),
 
   // Admin
   getUsers: () => request('GET', '/admin/users/'),
