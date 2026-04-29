@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
 import BlakerLogo from '../components/BlakerLogo'
-import { IconMapPin, IconClock, IconUsers, IconMoto } from '../components/Icons'
+import { IconMapPin, IconClock, IconUsers, IconMoto, IconPlus } from '../components/Icons'
 function StatusBadge({ status }) {
   const labels = { upcoming: 'Próximo', active: 'En curso', ended: 'Finalizado' }
   return <span className={`badge badge-${status}`}>{labels[status]}</span>
@@ -139,8 +139,15 @@ export default function HomePage() {
         <BlakerLogo size={42} showTagline center />
 
         <p style={{ marginTop: 16, fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>
-          Bienvenido, <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{currentUser?.name?.split(' ')[0]}</strong> 👋
+          Bienvenido, <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{currentUser?.first_name || currentUser?.username}</strong> 👋
         </p>
+        <button
+          className="btn btn-primary btn-sm"
+          style={{ marginTop: 14 }}
+          onClick={() => navigate('/events')}
+        >
+          <IconPlus size={15} /> Crear ruta
+        </button>
       </div>
 
       <div style={{ padding: '20px 16px', maxWidth: 480, margin: '0 auto' }}>

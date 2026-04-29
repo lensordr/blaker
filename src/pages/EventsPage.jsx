@@ -3,7 +3,117 @@ import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
-import { IconMapPin, IconClock, IconUsers, IconCalendar } from '../components/Icons'
+import { IconMapPin, IconClock, IconUsers, IconCalendar, IconPlus, IconBack } from '../components/Icons'
+
+// ─── Create Route Modal ───────────────────────────────────────────────────────
+function CreateRouteModal({ onClose }) {
+  const createRoute = useStore((s) => s.createRoute)
+  const fetchRoutes = useStore((s) => s.fetchRoutes)
+  const toast = useToast ? null : null
+  const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [form, setForm] = useState({
+    title: '', description: '', city: '', location_detail: '',
+    date: '', end_date: '', max_participants: 20, route_url: '',
+  })
+
+  const set = (f, v) => { setForm(p => ({ ...p, [f]: v })); setErrors(p => ({ ...p, [f]: '' })) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.title.trim()) e.title = 'Requerido'
+    if (!form.city.trim()) e.city = 'Requerido'
+    if (!form.date) e.date = 'Requerido'
+    if (!form.end_date) e.end_date = 'Requerido'
+    if (form.date && form.end_date && new Date(form.end_date) <= new Date(form.date)) e.end_date = 'Debe ser posterior al inicio'
+    setErrors(e)
+    return !Object.keys(e).length
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!validate()) return
+    setSaving(true)
+    const data = {
+      ...form,
+      date: new Date(form.date).toISOString(),
+      end_date: new Date(form.end_date).toISOString(),
+      max_participants: Number(form.max_participants),
+    }
+    const result = await createRoute(data)
+    setSaving(false)
+    if (result?.error) { setErrors({ general: result.error }); return }
+    await fetchRoutes()
+    onClose()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <h2 className="modal-title">Nueva ruta 🏍️</h2>
+        <form onSubmit={handleSubmit} className="stack">
+          {errors.general && (
+            <div style={{ background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, color: 'var(--red)' }}>
+              {errors.general}
+            </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Título *</label>
+            <input className="form-input" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: Ruta por Montserrat" />
+            {errors.title && <span className="form-error">{errors.title}</span>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Descripción</label>
+            <textarea className="form-textarea" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe la ruta..." />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-group">
+              <label className="form-label">Ciudad *</label>
+              <input className="form-input" value={form.city} onChange={e => set('city', e.target.value)} placeholder="Barcelona" />
+              {errors.city && <span className="form-error">{errors.city}</span>}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Detalle ubicación</label>
+              <input className="form-input" value={form.location_detail} onChange={e => set('location_detail', e.target.value)} placeholder="Punto de salida" />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-group">
+              <label className="form-label">Inicio *</label>
+              <input className="form-input" type="datetime-local" value={form.date} onChange={e => set('date', e.target.value)} />
+              {errors.date && <span className="form-error">{errors.date}</span>}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Fin *</label>
+              <input className="form-input" type="datetime-local" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+              {errors.end_date && <span className="form-error">{errors.end_date}</span>}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-group">
+              <label className="form-label">Máx. riders</label>
+              <input className="form-input" type="number" min="2" max="200" value={form.max_participants} onChange={e => set('max_participants', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Link Google Maps</label>
+              <input className="form-input" type="url" value={form.route_url} onChange={e => set('route_url', e.target.value)} placeholder="https://maps.google.com/..." />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={saving}>
+              {saving ? <span className="spinner" /> : 'Crear ruta'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// need toast import
+import { useToast } from '../components/Toast'
 
 function EventRow({ event, onClick }) {
   return (
@@ -63,6 +173,7 @@ export default function EventsPage() {
   const fetchRoutes = useStore((s) => s.fetchRoutes)
   const routesLoading = useStore((s) => s.routesLoading)
   const [filter, setFilter] = useState('all')
+  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     fetchRoutes()
@@ -84,11 +195,16 @@ export default function EventsPage() {
   return (
     <div style={{ flex: 1, paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
       <div style={{ padding: '16px 16px 0', position: 'sticky', top: 0, background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <IconCalendar size={22} />
-          <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Rutas
-          </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <IconCalendar size={22} />
+            <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Rutas
+            </h1>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+            <IconPlus size={16} /> Nueva ruta
+          </button>
         </div>
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
           {filters.map((f) => (
@@ -124,6 +240,8 @@ export default function EventsPage() {
           </div>
         )}
       </div>
+
+      {showCreate && <CreateRouteModal onClose={() => setShowCreate(false)} />}
     </div>
   )
 }
