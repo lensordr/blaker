@@ -12,7 +12,7 @@ import { useToast } from '../components/Toast'
 const STATUS_LABELS = { upcoming: 'Próximo', active: 'En curso', full: 'Completo', ended: 'Finalizado' }
 
 // ─── Chat Tab ─────────────────────────────────────────────────────────────────
-function ChatTab({ route }) {
+function ChatTab({ route, inGracePeriod, chatDeadline }) {
   const currentUser = useStore((s) => s.currentUser)
   const messages = useStore((s) => s.messages[route.id] || [])
   const fetchMessages = useStore((s) => s.fetchMessages)
@@ -46,7 +46,7 @@ function ChatTab({ route }) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const isClosed = route.status === 'ended'
+  const isClosed = !chatDeadline || new Date() > chatDeadline
   const getName = (msg) => {
     const u = msg.user
     if (!u) return '?'
@@ -55,6 +55,16 @@ function ChatTab({ route }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Grace period warning */}
+      {inGracePeriod && chatDeadline && (
+        <div style={{
+          padding: '8px 16px', background: 'var(--yellow-dim)',
+          borderBottom: '1px solid rgba(217,119,6,0.2)',
+          fontSize: 12, color: 'var(--yellow)', fontWeight: 600, textAlign: 'center',
+        }}>
+          ⏳ Ruta finalizada — chat disponible hasta {format(chatDeadline, "d MMM · HH:mm", { locale: es })}. Después se eliminará.
+        </div>
+      )}
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="empty-state" style={{ padding: '32px 0' }}>
@@ -87,7 +97,7 @@ function ChatTab({ route }) {
 
       {isClosed ? (
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: 13, color: 'var(--text-3)', background: 'var(--bg-2)' }}>
-          El chat está cerrado — ruta finalizada
+          Chat cerrado — la ruta y sus mensajes han sido eliminados
         </div>
       ) : (
         <div className="chat-input-bar">
@@ -208,8 +218,15 @@ export default function EventDetailPage() {
   const userStatus = route.user_status  // from API: null | 'pending' | 'approved' | 'rejected'
   const isAdmin = currentUser?.is_staff
   const isApproved = userStatus === 'approved' || isAdmin
-  const canChat = isApproved && route.status !== 'ended'
-  const canPhotos = isApproved
+  const isCreator = route.creator?.id === currentUser?.id
+
+  // Chat open during event + 24h grace period after end
+  const chatDeadline = route.end_date ? new Date(new Date(route.end_date).getTime() + 24 * 60 * 60 * 1000) : null
+  const chatOpen = chatDeadline ? new Date() < chatDeadline : true
+  const inGracePeriod = route.status === 'ended' && chatOpen
+
+  const canChat = (isApproved || isCreator) && chatOpen
+  const canPhotos = isApproved || isCreator
 
   const handleJoin = async () => {
     setJoining(true)
@@ -227,7 +244,7 @@ export default function EventDetailPage() {
 
   const tabs = [
     { key: 'info', label: 'Info' },
-    ...(canChat ? [{ key: 'chat', label: 'Chat' }] : []),
+    ...(canChat ? [{ key: 'chat', label: inGracePeriod ? 'Chat ⏳' : 'Chat' }] : []),
     ...(canPhotos ? [{ key: 'photos', label: 'Fotos' }] : []),
   ]
 
@@ -361,7 +378,7 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        {tab === 'chat' && canChat && <ChatTab route={route} />}
+        {tab === 'chat' && canChat && <ChatTab route={route} inGracePeriod={inGracePeriod} chatDeadline={chatDeadline} />}
         {tab === 'photos' && canPhotos && (
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <PhotosTab route={route} />
