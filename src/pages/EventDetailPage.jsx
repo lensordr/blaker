@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
 import {
   IconBack, IconMapPin, IconClock, IconUsers, IconLink,
-  IconChat, IconSend, IconImage, IconCamera
+  IconChat, IconSend, IconImage, IconCamera, IconEdit, IconTrash
 } from '../components/Icons'
 import { useToast } from '../components/Toast'
 
@@ -191,6 +191,113 @@ function PhotosTab({ route }) {
   )
 }
 
+// ─── Edit Route Modal ─────────────────────────────────────────────────────────
+function EditRouteModal({ route, onClose, onDelete }) {
+  const updateRoute = useStore((s) => s.updateRoute)
+  const toast = useToast()
+  const [saving, setSaving] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
+
+  const toLocal = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  }
+
+  const [form, setForm] = useState({
+    title: route.title || '',
+    description: route.description || '',
+    city: route.city || '',
+    location_detail: route.location_detail || '',
+    date: toLocal(route.date),
+    end_date: toLocal(route.end_date),
+    max_participants: route.max_participants || 20,
+    route_url: route.route_url || '',
+  })
+
+  const set = (f, v) => setForm(p => ({ ...p, [f]: v }))
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    const data = { ...form, date: new Date(form.date).toISOString(), end_date: new Date(form.end_date).toISOString(), max_participants: Number(form.max_participants) }
+    const result = await updateRoute(route.id, data)
+    setSaving(false)
+    if (result?.error) { toast(result.error, 'error'); return }
+    toast('Ruta actualizada ✓', 'success')
+    onClose()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <h2 className="modal-title">Editar ruta</h2>
+        {confirmDel ? (
+          <div className="stack">
+            <p style={{ fontSize: 15, color: 'var(--text-2)' }}>¿Eliminar <strong>"{route.title}"</strong>? Esta acción no se puede deshacer.</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmDel(false)}>Cancelar</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={onDelete}><IconTrash size={16} /> Eliminar</button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSave} className="stack">
+            <div className="form-group">
+              <label className="form-label">Título</label>
+              <input className="form-input" value={form.title} onChange={e => set('title', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descripción</label>
+              <textarea className="form-textarea" value={form.description} onChange={e => set('description', e.target.value)} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-group">
+                <label className="form-label">Ciudad</label>
+                <input className="form-input" value={form.city} onChange={e => set('city', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Detalle</label>
+                <input className="form-input" value={form.location_detail} onChange={e => set('location_detail', e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-group">
+                <label className="form-label">Inicio</label>
+                <input className="form-input" type="datetime-local" value={form.date} onChange={e => set('date', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fin</label>
+                <input className="form-input" type="datetime-local" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-group">
+                <label className="form-label">Máx. riders</label>
+                <input className="form-input" type="number" min="2" max="200" value={form.max_participants} onChange={e => set('max_participants', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Google Maps</label>
+                <input className="form-input" type="url" value={form.route_url} onChange={e => set('route_url', e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmDel(true)}>
+                <IconTrash size={14} />
+              </button>
+              <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={saving}>
+                {saving ? <span className="spinner" /> : 'Guardar'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function EventDetailPage() {
   const { id } = useParams()
@@ -201,6 +308,9 @@ export default function EventDetailPage() {
   const joinRoute = useStore((s) => s.joinRoute)
   const [tab, setTab] = useState('info')
   const [joining, setJoining] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const updateRoute = useStore((s) => s.updateRoute)
+  const deleteRoute = useStore((s) => s.deleteRoute)
   const toast = useToast()
 
   useEffect(() => { if (!routes.length) fetchRoutes() }, [])
@@ -219,6 +329,7 @@ export default function EventDetailPage() {
   const isAdmin = currentUser?.is_staff
   const isSubscribed = currentUser?.is_subscribed || currentUser?.is_free_user || isAdmin
   const isCreator = route.creator?.id === currentUser?.id
+  // Creator is always considered approved for their own route
   const isApproved = userStatus === 'approved' || isAdmin || isCreator
 
   // Non-subscribers see paywall
@@ -308,6 +419,11 @@ export default function EventDetailPage() {
         }}>
           {route.title}
         </h1>
+        {(isCreator || isAdmin) && (
+          <button className="btn btn-ghost btn-icon" onClick={() => setShowEdit(true)} aria-label="Editar">
+            <IconEdit size={18} />
+          </button>
+        )}
         <span className={`badge badge-${route.status}`}>
           {route.status === 'active' ? <><span className="live-dot" style={{ width: 6, height: 6 }} /> En curso</> : STATUS_LABELS[route.status]}
         </span>
@@ -427,6 +543,15 @@ export default function EventDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Edit modal */}
+      {showEdit && (
+        <EditRouteModal
+          route={route}
+          onClose={() => setShowEdit(false)}
+          onDelete={() => { navigate('/events'); deleteRoute(route.id) }}
+        />
+      )}
     </div>
   )
 }

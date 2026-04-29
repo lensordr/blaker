@@ -192,93 +192,75 @@ function EventRow({ event, onClick }) {
 
 export default function EventsPage() {
   const navigate = useNavigate()
+  const currentUser = useStore((s) => s.currentUser)
   const routes = useStore((s) => s.routes)
   const fetchRoutes = useStore((s) => s.fetchRoutes)
   const routesLoading = useStore((s) => s.routesLoading)
   const [filter, setFilter] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
   const [citySearch, setCitySearch] = useState('')
+  const [showCityFilter, setShowCityFilter] = useState(false)
 
   useEffect(() => {
     fetchRoutes(citySearch || null)
   }, [fetchRoutes, citySearch])
 
+  // Get unique cities from loaded routes
+  const availableCities = [...new Set(routes.map(r => r.city).filter(Boolean))].sort()
+
   const filtered = routes.filter((e) => {
+    if (filter === 'mine') return e.creator?.id === currentUser?.id
+    if (filter === 'joined') return e.user_status === 'approved' || e.user_status === 'pending'
     if (filter === 'all') return true
     if (filter === 'upcoming') return e.status === 'upcoming' || e.status === 'full'
     return e.status === filter
   })
 
   const filters = [
-    { key: 'all', label: 'Todos' },
-    { key: 'active', label: 'En curso' },
-    { key: 'upcoming', label: 'Próximos' },
-    { key: 'ended', label: 'Pasados' },
+    { key: 'all', label: 'Todas' },
+    { key: 'active', label: '🔴 En curso' },
+    { key: 'upcoming', label: 'Próximas' },
+    { key: 'ended', label: 'Pasadas' },
+    { key: 'mine', label: 'Mis rutas' },
+    { key: 'joined', label: 'Unidas' },
   ]
 
   return (
     <div style={{ flex: 1, paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
-      <div style={{ padding: '16px 16px 0', position: 'sticky', top: 0, background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <IconCalendar size={22} />
-            <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <div style={{ padding: '12px 16px 0', position: 'sticky', top: 0, background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IconCalendar size={20} />
+            <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Rutas
             </h1>
+            {citySearch && (
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-dim)', borderRadius: 100, padding: '2px 10px' }}>
+                📍 {citySearch} <span style={{ cursor: 'pointer' }} onClick={() => setCitySearch('')}>×</span>
+              </span>
+            )}
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
-            <IconPlus size={16} /> Nueva ruta
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowCityFilter(true)}>
+              🗺️ Ciudad
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+              <IconPlus size={15} /> Nueva
+            </button>
+          </div>
         </div>
 
-        {/* City search */}
-        <div style={{ position: 'relative', marginBottom: 10 }}>
-          <input
-            className="form-input"
-            type="text"
-            placeholder="🔍  Buscar por ciudad..."
-            value={citySearch}
-            onChange={(e) => setCitySearch(e.target.value)}
-            style={{ paddingLeft: 14, borderRadius: 100 }}
-          />
-          {citySearch && (
-            <button
-              onClick={() => setCitySearch('')}
-              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 16, lineHeight: 1 }}
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        {/* Popular cities */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', marginBottom: 8 }}>
-          {['Barcelona', 'Madrid', 'Valencia', 'Sevilla', 'Málaga', 'Bilbao', 'Zaragoza', 'Girona'].map((city) => (
-            <button
-              key={city}
-              onClick={() => setCitySearch(citySearch === city ? '' : city)}
-              style={{
-                padding: '5px 12px', borderRadius: 100, border: '1px solid',
-                borderColor: citySearch === city ? 'var(--accent)' : 'var(--border)',
-                background: citySearch === city ? 'var(--accent-dim)' : 'transparent',
-                color: citySearch === city ? 'var(--accent)' : 'var(--text-2)',
-                fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-              }}
-            >
-              {city}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
+        {/* Filter tabs */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, scrollbarWidth: 'none' }}>
           {filters.map((f) => (
             <button key={f.key} onClick={() => setFilter(f.key)} style={{
-              padding: '6px 14px', borderRadius: 20, border: '1px solid',
+              padding: '6px 12px', borderRadius: 100, border: '1px solid', flexShrink: 0,
               borderColor: filter === f.key ? 'var(--accent)' : 'var(--border)',
               background: filter === f.key ? 'var(--accent-dim)' : 'transparent',
               color: filter === f.key ? 'var(--accent)' : 'var(--text-2)',
-              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: 700,
+              letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap',
             }}>
               {f.label}
             </button>
@@ -287,13 +269,18 @@ export default function EventsPage() {
       </div>
 
       <div style={{ padding: '16px', maxWidth: 480, margin: '0 auto' }}>
-        {routesLoading && filtered.length === 0 && (
-          <div className="empty-state"><span className="spinner" /></div>
-        )}
+        {routesLoading && filtered.length === 0 && <div className="empty-state"><span className="spinner" /></div>}
         {!routesLoading && filtered.length === 0 && (
           <div className="empty-state">
             <IconCalendar size={48} />
-            <p className="empty-state-title">Sin rutas</p>
+            <p className="empty-state-title">
+              {filter === 'mine' ? 'No has creado rutas aún' : filter === 'joined' ? 'No te has unido a ninguna ruta' : 'Sin rutas'}
+            </p>
+            {filter === 'mine' && (
+              <button className="btn btn-primary btn-sm mt-8" onClick={() => setShowCreate(true)}>
+                <IconPlus size={14} /> Crear mi primera ruta
+              </button>
+            )}
           </div>
         )}
         {filtered.length > 0 && (
@@ -306,6 +293,78 @@ export default function EventsPage() {
       </div>
 
       {showCreate && <CreateRouteModal onClose={() => setShowCreate(false)} />}
+
+      {/* City filter modal */}
+      {showCityFilter && (
+        <div className="modal-overlay" onClick={() => setShowCityFilter(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <h2 className="modal-title">Filtrar por ciudad</h2>
+
+            {/* Search input */}
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="🔍 Escribe una ciudad..."
+                value={citySearch}
+                onChange={(e) => setCitySearch(e.target.value)}
+                style={{ borderRadius: 100 }}
+                autoFocus
+              />
+              {citySearch && (
+                <button onClick={() => setCitySearch('')} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 18 }}>×</button>
+              )}
+            </div>
+
+            {/* Popular cities */}
+            <p className="section-title" style={{ marginBottom: 8 }}>Ciudades populares</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {['Barcelona', 'Madrid', 'Valencia', 'Sevilla', 'Málaga', 'Bilbao', 'Zaragoza', 'Girona', 'Tarragona', 'Lleida', 'Murcia', 'Alicante'].map((city) => (
+                <button key={city} onClick={() => { setCitySearch(city); setShowCityFilter(false) }} style={{
+                  padding: '7px 14px', borderRadius: 100, border: '1px solid',
+                  borderColor: citySearch === city ? 'var(--accent)' : 'var(--border)',
+                  background: citySearch === city ? 'var(--accent-dim)' : 'var(--bg-3)',
+                  color: citySearch === city ? 'var(--accent)' : 'var(--text)',
+                  fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer',
+                }}>
+                  {city}
+                </button>
+              ))}
+            </div>
+
+            {/* Cities from actual routes */}
+            {availableCities.length > 0 && (
+              <>
+                <p className="section-title" style={{ marginBottom: 8 }}>Ciudades con rutas activas</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  {availableCities.map((city) => (
+                    <button key={city} onClick={() => { setCitySearch(city); setShowCityFilter(false) }} style={{
+                      padding: '7px 14px', borderRadius: 100, border: '1px solid var(--accent-border)',
+                      background: 'var(--accent-dim)', color: 'var(--accent)',
+                      fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}>
+                      🏍️ {city}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              {citySearch && (
+                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setCitySearch(''); setShowCityFilter(false) }}>
+                  Quitar filtro
+                </button>
+              )}
+              <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => setShowCityFilter(false)}>
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
