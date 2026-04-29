@@ -55,7 +55,7 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%' }}>
       {/* Grace period warning */}
       {inGracePeriod && chatDeadline && (
         <div style={{
@@ -462,7 +462,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {tab === 'info' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
             {/* Cover banner */}
@@ -552,7 +552,11 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        {tab === 'chat' && canChat && <ChatTab route={route} inGracePeriod={inGracePeriod} chatDeadline={chatDeadline} />}
+        {tab === 'chat' && canChat && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <ChatTab route={route} inGracePeriod={inGracePeriod} chatDeadline={chatDeadline} />
+          </div>
+        )}
         {tab === 'photos' && canPhotos && (
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <PhotosTab route={route} />
