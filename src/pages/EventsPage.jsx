@@ -116,6 +116,9 @@ function CreateRouteModal({ onClose }) {
 import { useToast } from '../components/Toast'
 
 function EventRow({ event, onClick }) {
+  const currentUser = useStore((s) => s.currentUser)
+  const isSubscribed = currentUser?.is_subscribed || currentUser?.is_free_user || currentUser?.is_staff
+
   return (
     <div className="event-card" onClick={onClick} role="button" tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}>
@@ -140,26 +143,46 @@ function EventRow({ event, onClick }) {
             {event.status === 'active' ? 'En curso' : event.status === 'upcoming' ? 'Próximo' : event.status === 'full' ? 'Completo' : 'Finalizado'}
           </span>
         </div>
+        {/* Lock for non-subscribers */}
+        {!isSubscribed && (
+          <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 2, background: 'rgba(0,0,0,0.6)', borderRadius: 100, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12 }}>🔒</span>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.06em' }}>SUSCRIPCIÓN</span>
+          </div>
+        )}
       </div>
       <div className="event-card-body">
         <h3 className="event-card-title" style={{ fontSize: 20 }}>{event.title}</h3>
-        <div className="event-card-info">
-          <div className="event-card-info-row">
-            <IconClock size={13} />
-            {format(new Date(event.date), "d MMM yyyy · HH:mm", { locale: es })}
+        {isSubscribed ? (
+          <div className="event-card-info">
+            <div className="event-card-info-row">
+              <IconClock size={13} />
+              {format(new Date(event.date), "d MMM yyyy · HH:mm", { locale: es })}
+            </div>
+            <div className="event-card-info-row">
+              <IconMapPin size={13} />
+              {event.city}
+            </div>
           </div>
-          <div className="event-card-info-row">
-            <IconMapPin size={13} />
-            {event.city}
-          </div>
-        </div>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>
+            Suscríbete para ver los detalles
+          </p>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-          <div className="event-card-riders">
-            <IconUsers size={12} />
-            {event.approved_count} / {event.max_participants} riders
-          </div>
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)' }}>
-            Ver →
+          {isSubscribed ? (
+            <div className="event-card-riders">
+              <IconUsers size={12} />
+              {event.approved_count} / {event.max_participants} riders
+            </div>
+          ) : (
+            <div className="event-card-riders">
+              <IconUsers size={12} />
+              {event.max_participants} riders max
+            </div>
+          )}
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isSubscribed ? 'var(--accent)' : 'var(--text-3)' }}>
+            {isSubscribed ? 'Ver →' : '🔒 Ver'}
           </span>
         </div>
       </div>
@@ -174,10 +197,11 @@ export default function EventsPage() {
   const routesLoading = useStore((s) => s.routesLoading)
   const [filter, setFilter] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
+  const [citySearch, setCitySearch] = useState('')
 
   useEffect(() => {
-    fetchRoutes()
-  }, [fetchRoutes])
+    fetchRoutes(citySearch || null)
+  }, [fetchRoutes, citySearch])
 
   const filtered = routes.filter((e) => {
     if (filter === 'all') return true
@@ -195,7 +219,7 @@ export default function EventsPage() {
   return (
     <div style={{ flex: 1, paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
       <div style={{ padding: '16px 16px 0', position: 'sticky', top: 0, background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <IconCalendar size={22} />
             <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -205,6 +229,46 @@ export default function EventsPage() {
           <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
             <IconPlus size={16} /> Nueva ruta
           </button>
+        </div>
+
+        {/* City search */}
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <input
+            className="form-input"
+            type="text"
+            placeholder="🔍  Buscar por ciudad..."
+            value={citySearch}
+            onChange={(e) => setCitySearch(e.target.value)}
+            style={{ paddingLeft: 14, borderRadius: 100 }}
+          />
+          {citySearch && (
+            <button
+              onClick={() => setCitySearch('')}
+              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 16, lineHeight: 1 }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* Popular cities */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', marginBottom: 8 }}>
+          {['Barcelona', 'Madrid', 'Valencia', 'Sevilla', 'Málaga', 'Bilbao', 'Zaragoza', 'Girona'].map((city) => (
+            <button
+              key={city}
+              onClick={() => setCitySearch(citySearch === city ? '' : city)}
+              style={{
+                padding: '5px 12px', borderRadius: 100, border: '1px solid',
+                borderColor: citySearch === city ? 'var(--accent)' : 'var(--border)',
+                background: citySearch === city ? 'var(--accent-dim)' : 'transparent',
+                color: citySearch === city ? 'var(--accent)' : 'var(--text-2)',
+                fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              {city}
+            </button>
+          ))}
         </div>
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
           {filters.map((f) => (

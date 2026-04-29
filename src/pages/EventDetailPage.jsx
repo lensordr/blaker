@@ -217,8 +217,49 @@ export default function EventDetailPage() {
 
   const userStatus = route.user_status  // from API: null | 'pending' | 'approved' | 'rejected'
   const isAdmin = currentUser?.is_staff
-  const isApproved = userStatus === 'approved' || isAdmin
+  const isSubscribed = currentUser?.is_subscribed || currentUser?.is_free_user || isAdmin
   const isCreator = route.creator?.id === currentUser?.id
+  const isApproved = userStatus === 'approved' || isAdmin || isCreator
+
+  // Non-subscribers see paywall
+  if (!isSubscribed) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
+        {/* Top bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 10 }}>
+          <button className="btn btn-ghost btn-icon" onClick={() => navigate(-1)}><IconBack /></button>
+          <h1 style={{ flex: 1, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 900, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {route.title}
+          </h1>
+        </div>
+        {/* Paywall */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+          <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>
+            Contenido exclusivo
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6 }}>
+            Suscríbete para ver la ubicación, detalles de la ruta, unirte al chat y mucho más.
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 28 }}>
+            Acceso completo a todas las rutas de RUTILLAS
+          </p>
+          <a
+            href="https://square.link/u/4AiXGpLe"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary btn-lg"
+            style={{ textDecoration: 'none', marginBottom: 12 }}
+          >
+            🏍️ Suscribirse ahora
+          </a>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
+            Volver
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Chat open during event + 24h grace period after end
   const chatDeadline = route.end_date ? new Date(new Date(route.end_date).getTime() + 24 * 60 * 60 * 1000) : null
