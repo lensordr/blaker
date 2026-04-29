@@ -159,7 +159,10 @@ const useStore = create(
         try {
           const list = await api.getMessages(routeId)
           set((s) => ({ messages: { ...s.messages, [routeId]: list } }))
-        } catch (e) {}
+        } catch (e) {
+          // If 403, store empty array so UI shows "no messages" not blank
+          set((s) => ({ messages: { ...s.messages, [routeId]: s.messages[routeId] || [] } }))
+        }
       },
 
       sendMessage: async (routeId, text) => {

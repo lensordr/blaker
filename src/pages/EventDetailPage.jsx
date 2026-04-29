@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
+import { api } from '../api'
 import {
   IconBack, IconMapPin, IconClock, IconUsers, IconLink,
   IconChat, IconSend, IconImage, IconCamera, IconEdit, IconTrash
@@ -23,9 +24,9 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
   const toast = useToast()
 
   useEffect(() => {
-    fetchMessages(route.id)
-    const interval = setInterval(() => fetchMessages(route.id), 5000)
-    return () => clearInterval(interval)
+      fetchMessages(route.id)
+      const interval = setInterval(() => fetchMessages(route.id), 5000)
+      return () => clearInterval(interval)
   }, [route.id, fetchMessages])
 
   useEffect(() => {
@@ -306,6 +307,7 @@ export default function EventDetailPage() {
   const routes = useStore((s) => s.routes)
   const fetchRoutes = useStore((s) => s.fetchRoutes)
   const joinRoute = useStore((s) => s.joinRoute)
+  const set = useStore.setState
   const [tab, setTab] = useState('info')
   const [joining, setJoining] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -313,7 +315,21 @@ export default function EventDetailPage() {
   const deleteRoute = useStore((s) => s.deleteRoute)
   const toast = useToast()
 
-  useEffect(() => { if (!routes.length) fetchRoutes() }, [])
+  useEffect(() => {
+    // Always fetch fresh route data when opening detail page
+    const loadRoute = async () => {
+      try {
+        const fresh = await api.getRoute(parseInt(id))
+        set((s) => ({
+          routes: s.routes.some(r => r.id === fresh.id)
+            ? s.routes.map(r => r.id === fresh.id ? fresh : r)
+            : [...s.routes, fresh]
+        }))
+      } catch (e) {}
+    }
+    loadRoute()
+    if (!routes.length) fetchRoutes()
+  }, [id])
 
   const route = routes.find((r) => r.id === parseInt(id) || r.id === id)
 
