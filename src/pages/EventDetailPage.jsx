@@ -332,8 +332,8 @@ export default function EventDetailPage() {
   // Creator is always considered approved for their own route
   const isApproved = userStatus === 'approved' || isAdmin || isCreator
 
-  // Non-subscribers see paywall
-  if (!isSubscribed) {
+  // Non-subscribers see paywall — EXCEPT creators can always see their own route
+  if (!isSubscribed && !isCreator) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
         {/* Top bar */}

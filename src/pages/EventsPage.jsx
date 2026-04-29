@@ -9,7 +9,8 @@ import { IconMapPin, IconClock, IconUsers, IconCalendar, IconPlus, IconBack } fr
 function CreateRouteModal({ onClose }) {
   const createRoute = useStore((s) => s.createRoute)
   const fetchRoutes = useStore((s) => s.fetchRoutes)
-  const toast = useToast ? null : null
+  const currentUser = useStore((s) => s.currentUser)
+  const toast = useToast()
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
   const [form, setForm] = useState({
@@ -17,6 +18,7 @@ function CreateRouteModal({ onClose }) {
     date: '', end_date: '', max_participants: 20, route_url: '',
   })
 
+  const isSubscribed = currentUser?.is_subscribed || currentUser?.is_free_user || currentUser?.is_staff
   const set = (f, v) => { setForm(p => ({ ...p, [f]: v })); setErrors(p => ({ ...p, [f]: '' })) }
 
   const validate = () => {
@@ -52,7 +54,25 @@ function CreateRouteModal({ onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-handle" />
         <h2 className="modal-title">Nueva ruta 🏍️</h2>
-        <form onSubmit={handleSubmit} className="stack">
+        {!isSubscribed ? (
+          <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Suscripción requerida</p>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 20, lineHeight: 1.5 }}>
+              Necesitas una suscripción para crear rutas y acceder a todos los detalles.
+            </p>
+            <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '10px 16px', marginBottom: 20 }}>
+              <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 900, color: 'var(--accent)' }}>3,99€ <span style={{ fontSize: 14, fontWeight: 600 }}>/mes</span></p>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>Acceso completo · Cancela cuando quieras</p>
+            </div>
+            <a href="https://square.link/u/4AiXGpLe" target="_blank" rel="noopener noreferrer"
+              className="btn btn-primary btn-full btn-lg" style={{ textDecoration: 'none', marginBottom: 10 }}>
+              🏍️ Suscribirse — 3,99€/mes
+            </a>
+            <button className="btn btn-ghost btn-full" onClick={onClose}>Cancelar</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="stack">
           {errors.general && (
             <div style={{ background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, color: 'var(--red)' }}>
               {errors.general}
@@ -106,7 +126,8 @@ function CreateRouteModal({ onClose }) {
               {saving ? <span className="spinner" /> : 'Crear ruta'}
             </button>
           </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   )
