@@ -347,12 +347,12 @@ export default function ProfilePage() {
                 fontSize: 26, fontWeight: 900, fontStyle: 'italic',
                 textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1,
               }}>
-                {currentUser?.name}
+                {name}
               </h2>
-              {currentUser?.role === 'admin' && (
+              {currentUser?.is_staff && (
                 <span className="badge badge-approved"><IconShield size={10} /> Admin</span>
               )}
-              {currentUser?.experience && currentUser.role !== 'admin' && (
+              {currentUser?.experience && !currentUser?.is_staff && (
                 <span style={{
                   fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
                   color: EXPERIENCE_COLORS[currentUser.experience],
@@ -374,10 +374,9 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Instagram pill */}
-            {currentUser?.instaHandle && (
+            {currentUser?.insta_handle && (
               <div style={{ marginTop: 8 }}>
-                <InstagramPill handle={currentUser.instaHandle} />
+                <InstagramPill handle={currentUser.insta_handle} />
               </div>
             )}
           </div>

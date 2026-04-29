@@ -5,7 +5,7 @@ import useStore from '../store/useStore'
 export default function BottomNav() {
   const currentUser = useStore((s) => s.currentUser)
   const getUnreadCount = useStore((s) => s.getUnreadCount)
-  const unread = currentUser ? getUnreadCount(currentUser.id) : 0
+  const unread = currentUser ? getUnreadCount() : 0
 
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Main navigation">
