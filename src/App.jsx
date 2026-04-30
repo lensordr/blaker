@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import useStore from './store/useStore'
 import BottomNav from './components/BottomNav'
 import { ToastProvider } from './components/Toast'
@@ -20,7 +21,7 @@ function ProtectedRoute({ children }) {
 function AdminRoute({ children }) {
   const currentUser = useStore((s) => s.currentUser)
   if (!currentUser) return <Navigate to="/auth" replace />
-  if (currentUser.role !== 'admin') return <Navigate to="/" replace />
+  if (!currentUser.is_staff) return <Navigate to="/" replace />
   return children
 }
 
@@ -33,12 +34,34 @@ function AppLayout({ children }) {
   )
 }
 
+// Global notification poller — runs as long as user is logged in
+function NotificationPoller() {
+  const currentUser = useStore((s) => s.currentUser)
+  const fetchNotifications = useStore((s) => s.fetchNotifications)
+  const refreshUser = useStore((s) => s.refreshUser)
+
+  useEffect(() => {
+    if (!currentUser) return
+    // Fetch immediately on mount/login
+    fetchNotifications()
+    refreshUser()
+    // Poll every 8 seconds
+    const interval = setInterval(() => {
+      fetchNotifications()
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [currentUser?.id, fetchNotifications, refreshUser])
+
+  return null
+}
+
 export default function App() {
   const currentUser = useStore((s) => s.currentUser)
 
   return (
     <BrowserRouter basename="/blaker">
       <ToastProvider />
+      <NotificationPoller />
       <Routes>
         {/* Auth */}
         <Route

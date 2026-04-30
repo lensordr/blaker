@@ -406,6 +406,8 @@ export default function EventDetailPage() {
       setTimeout(() => window.open(result.payment_url, '_blank'), 800)
     } else if (result?.error) {
       toast(result.error, 'error')
+    } else if (result?.status === 'approved') {
+      toast('¡Unido! Ya tienes acceso al chat 🏍️', 'success')
     } else {
       toast('Solicitud enviada ✓ El admin la revisará pronto', 'success')
     }
@@ -418,7 +420,7 @@ export default function EventDetailPage() {
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom))' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
@@ -464,7 +466,7 @@ export default function EventDetailPage() {
       {/* Content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {tab === 'info' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom) + 16px)' }}>
             {/* Cover banner */}
             <div className="event-card-cover-placeholder" style={{ borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
               <div style={{ position: 'absolute', inset: 0, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 24px' }}>

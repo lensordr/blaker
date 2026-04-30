@@ -123,7 +123,10 @@ const useStore = create(
           // Refresh route to get updated user_status
           const route = await api.getRoute(id)
           set((s) => ({ routes: s.routes.map((r) => r.id === id ? route : r) }))
-          return { ok: true }
+          // Refresh notifications immediately
+          const notifs = await api.getNotifications()
+          set({ notifications: notifs })
+          return { ok: true, status: res.status }
         } catch (e) {
           if (e.status === 402) {
             return { error: 'subscription_required', payment_url: e.data?.payment_url }
