@@ -59,7 +59,7 @@ export default function App() {
   const currentUser = useStore((s) => s.currentUser)
 
   return (
-    <BrowserRouter basename="/blaker">
+    <BrowserRouter basename="/blaker" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ToastProvider />
       <NotificationPoller />
       <Routes>
