@@ -550,9 +550,9 @@ export default function EventDetailPage() {
                 </div>
               )}
 
-              {!isApproved && (
+              {!isApproved && !isCreator && route.status !== 'ended' && (
                 <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '12px 14px', fontSize: 13, color: 'var(--text-3)', textAlign: 'center' }}>
-                  El chat y las fotos están disponibles solo para participantes aprobados
+                  Únete para acceder al chat y las fotos
                 </div>
               )}
             </div>

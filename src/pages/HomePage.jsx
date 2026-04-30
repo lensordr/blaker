@@ -195,7 +195,6 @@ export default function HomePage() {
           <div className="empty-state">
             <IconMoto size={56} />
             <p className="empty-state-title">Sin rutas aún</p>
-            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>El admin publicará las próximas rutas aquí</p>
           </div>
         )}
         {routesLoading && routes.length === 0 && (
