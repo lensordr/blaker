@@ -408,6 +408,11 @@ export default function EventDetailPage() {
       toast(result.error, 'error')
     } else if (result?.status === 'approved') {
       toast('¡Unido! Ya tienes acceso al chat 🏍️', 'success')
+      // Fetch fresh route immediately so chat tab appears without refresh
+      try {
+        const fresh = await api.getRoute(parseInt(route.id))
+        setFreshRoute(fresh)
+      } catch (e) {}
     } else {
       toast('Solicitud enviada ✓ El admin la revisará pronto', 'success')
     }
