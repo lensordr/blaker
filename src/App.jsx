@@ -7,7 +7,7 @@ import { ToastProvider } from './components/Toast'
 import AuthPage from './pages/AuthPage'
 import HomePage from './pages/HomePage'
 import EventsPage from './pages/EventsPage'
-import EventDetailPage from './pages/EventDetailPage'
+import EventDetailPage, { ChatPage } from './pages/EventDetailPage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/AdminPage'
@@ -97,6 +97,14 @@ export default function App() {
               <AppLayout>
                 <EventDetailPage />
               </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/:id/chat"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
             </ProtectedRoute>
           }
         />
