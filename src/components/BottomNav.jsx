@@ -11,8 +11,8 @@ const IconMail = ({ size = 22 }) => (
 
 export default function BottomNav() {
   const currentUser = useStore((s) => s.currentUser)
-  const getUnreadCount = useStore((s) => s.getUnreadCount)
-  const unread = currentUser ? getUnreadCount() : 0
+  const notifications = useStore((s) => s.notifications)
+  const unread = currentUser ? notifications.filter((n) => !n.read).length : 0
 
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Main navigation">
