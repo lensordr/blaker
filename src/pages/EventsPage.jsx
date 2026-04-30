@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
 import { IconMapPin, IconClock, IconUsers, IconCalendar, IconPlus, IconBack } from '../components/Icons'
+import { useToast } from '../components/Toast'
 
 // ─── Create Route Modal ───────────────────────────────────────────────────────
 function CreateRouteModal({ onClose }) {
@@ -132,9 +133,6 @@ function CreateRouteModal({ onClose }) {
     </div>
   )
 }
-
-// need toast import
-import { useToast } from '../components/Toast'
 
 function EventRow({ event, onClick }) {
   const currentUser = useStore((s) => s.currentUser)
