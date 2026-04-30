@@ -307,32 +307,30 @@ export default function EventDetailPage() {
   const routes = useStore((s) => s.routes)
   const fetchRoutes = useStore((s) => s.fetchRoutes)
   const joinRoute = useStore((s) => s.joinRoute)
-  const set = useStore.setState
+  const updateRoute = useStore((s) => s.updateRoute)
+  const deleteRoute = useStore((s) => s.deleteRoute)
   const [tab, setTab] = useState('info')
   const [joining, setJoining] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
-  const updateRoute = useStore((s) => s.updateRoute)
-  const deleteRoute = useStore((s) => s.deleteRoute)
+  const [freshRoute, setFreshRoute] = useState(null)
   const toast = useToast()
 
+  // Always fetch fresh route on mount — no conditional hooks
   useEffect(() => {
-    // Always fetch fresh route data when opening detail page
-    const loadRoute = async () => {
+    const load = async () => {
       try {
-        const fresh = await api.getRoute(parseInt(id))
-        set((s) => ({
-          routes: s.routes.some(r => r.id === fresh.id)
-            ? s.routes.map(r => r.id === fresh.id ? fresh : r)
-            : [...s.routes, fresh]
-        }))
+        const r = await api.getRoute(parseInt(id))
+        setFreshRoute(r)
       } catch (e) {}
     }
-    loadRoute()
+    load()
     if (!routes.length) fetchRoutes()
-  }, [id])
+  }, [id]) // eslint-disable-line
 
-  const route = routes.find((r) => r.id === parseInt(id) || r.id === id)
+  // Use fresh route if available, fall back to store
+  const route = freshRoute || routes.find((r) => r.id === parseInt(id) || r.id === id)
 
+  // ── All logic below — no hooks after this point ──
   if (!route) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
