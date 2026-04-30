@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom'
 import { IconCalendar, IconBell, IconUser, IconShield } from './Icons'
 import useStore from '../store/useStore'
 
-// Contact icon
 const IconMail = ({ size = 22 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -18,16 +17,6 @@ export default function BottomNav() {
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Main navigation">
       <div className="nav-items">
-
-        <NavLink to="/" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} end>
-          {({ isActive }) => (
-            <>
-              {isActive && <span className="nav-active-dot" />}
-              <IconMail />
-              Contacto
-            </>
-          )}
-        </NavLink>
 
         <NavLink to="/events" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
           {({ isActive }) => (
@@ -54,6 +43,16 @@ export default function BottomNav() {
           )}
         </NavLink>
 
+        <NavLink to="/profile" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          {({ isActive }) => (
+            <>
+              {isActive && <span className="nav-active-dot" />}
+              <IconUser />
+              Perfil
+            </>
+          )}
+        </NavLink>
+
         {currentUser?.is_staff && (
           <NavLink to="/admin" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
             {({ isActive }) => (
@@ -66,12 +65,12 @@ export default function BottomNav() {
           </NavLink>
         )}
 
-        <NavLink to="/profile" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+        <NavLink to="/" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} end>
           {({ isActive }) => (
             <>
               {isActive && <span className="nav-active-dot" />}
-              <IconUser />
-              Perfil
+              <IconMail />
+              Contacto
             </>
           )}
         </NavLink>

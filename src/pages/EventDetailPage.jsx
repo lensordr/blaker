@@ -61,8 +61,11 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
-      display: 'flex', flexDirection: 'column',
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+      minHeight: 0,
+      overflow: 'hidden',
       background: 'var(--bg)',
     }}>
       {/* Grace period warning */}
@@ -443,7 +446,7 @@ export default function EventDetailPage() {
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
       {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
@@ -578,7 +581,13 @@ export default function EventDetailPage() {
         )}
 
         {tab === 'chat' && canChat && (
-          <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            overflow: 'hidden',
+          }}>
             <ChatTab route={route} inGracePeriod={inGracePeriod} chatDeadline={chatDeadline} />
           </div>
         )}

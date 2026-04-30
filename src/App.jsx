@@ -132,7 +132,7 @@ export default function App() {
         />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to={currentUser ? '/' : '/auth'} replace />} />
+        <Route path="*" element={<Navigate to={currentUser ? '/events' : '/auth'} replace />} />
       </Routes>
     </BrowserRouter>
   )
