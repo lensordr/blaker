@@ -15,7 +15,8 @@ const STATUS_LABELS = { upcoming: 'Próximo', active: 'En curso', full: 'Complet
 // ─── Chat Tab ─────────────────────────────────────────────────────────────────
 function ChatTab({ route, inGracePeriod, chatDeadline }) {
   const currentUser = useStore((s) => s.currentUser)
-  const messages = useStore((s) => s.messages[route.id] || [])
+  const routeId = route?.id
+  const messages = useStore((s) => s.messages[routeId] || [])
   const fetchMessages = useStore((s) => s.fetchMessages)
   const sendMessage = useStore((s) => s.sendMessage)
   const [text, setText] = useState('')
@@ -24,10 +25,11 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
   const toast = useToast()
 
   useEffect(() => {
-      fetchMessages(route.id)
-      const interval = setInterval(() => fetchMessages(route.id), 5000)
-      return () => clearInterval(interval)
-  }, [route.id, fetchMessages])
+    if (!routeId) return
+    fetchMessages(routeId)
+    const interval = setInterval(() => fetchMessages(routeId), 5000)
+    return () => clearInterval(interval)
+  }, [routeId, fetchMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -38,7 +40,7 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
     if (!trimmed || sending) return
     setSending(true)
     setText('')
-    const result = await sendMessage(route.id, trimmed)
+    const result = await sendMessage(routeId, trimmed)
     setSending(false)
     if (result?.error) toast(result.error, 'error')
   }
