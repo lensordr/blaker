@@ -1,6 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { IconHome, IconCalendar, IconBell, IconUser, IconShield } from './Icons'
+import { IconCalendar, IconBell, IconUser, IconShield } from './Icons'
 import useStore from '../store/useStore'
+
+// Contact icon
+const IconMail = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+)
 
 export default function BottomNav() {
   const currentUser = useStore((s) => s.currentUser)
@@ -10,12 +18,13 @@ export default function BottomNav() {
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Main navigation">
       <div className="nav-items">
+
         <NavLink to="/" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} end>
           {({ isActive }) => (
             <>
               {isActive && <span className="nav-active-dot" />}
-              <IconHome />
-              Home
+              <IconMail />
+              Contacto
             </>
           )}
         </NavLink>
@@ -25,7 +34,7 @@ export default function BottomNav() {
             <>
               {isActive && <span className="nav-active-dot" />}
               <IconCalendar />
-              Eventos
+              Rutas
             </>
           )}
         </NavLink>
@@ -45,7 +54,7 @@ export default function BottomNav() {
           )}
         </NavLink>
 
-        {currentUser?.role === 'admin' && (
+        {currentUser?.is_staff && (
           <NavLink to="/admin" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
             {({ isActive }) => (
               <>
@@ -66,6 +75,7 @@ export default function BottomNav() {
             </>
           )}
         </NavLink>
+
       </div>
     </nav>
   )

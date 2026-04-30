@@ -56,24 +56,42 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
     return u.first_name || u.username || '?'
   }
 
+  // Calculate input bar height for scroll area
+  const inputBarH = isClosed ? 44 : 64
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%' }}>
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      background: 'var(--bg)',
+    }}>
       {/* Grace period warning */}
       {inGracePeriod && chatDeadline && (
         <div style={{
           padding: '8px 16px', background: 'var(--yellow-dim)',
           borderBottom: '1px solid rgba(217,119,6,0.2)',
           fontSize: 12, color: 'var(--yellow)', fontWeight: 600, textAlign: 'center',
+          flexShrink: 0,
         }}>
-          ⏳ Ruta finalizada — chat disponible hasta {format(chatDeadline, "d MMM · HH:mm", { locale: es })}. Después se eliminará.
+          ⏳ Chat disponible hasta {format(chatDeadline, "d MMM · HH:mm", { locale: es })}
         </div>
       )}
-      <div className="chat-messages">
+
+      {/* Messages scroll area */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '12px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        WebkitOverflowScrolling: 'touch',
+      }}>
         {messages.length === 0 && (
-          <div className="empty-state" style={{ padding: '32px 0' }}>
-            <IconChat size={36} />
-            <p className="empty-state-title">Sin mensajes aún</p>
-            {!isClosed && <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Sé el primero en escribir</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8, color: 'var(--text-3)', paddingTop: 40 }}>
+            <IconChat size={36} style={{ opacity: 0.4 }} />
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, textTransform: 'uppercase' }}>Sin mensajes aún</p>
+            {!isClosed && <p style={{ fontSize: 13 }}>Sé el primero en escribir</p>}
           </div>
         )}
         {messages.map((msg) => {
@@ -87,9 +105,7 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
                 {!isOwn && <div className="chat-bubble-name">{getName(msg)}</div>}
                 <div className="chat-bubble-content">
                   <p className="chat-bubble-text">{msg.text}</p>
-                  <p className="chat-bubble-time">
-                    {format(new Date(msg.created_at), 'HH:mm')}
-                  </p>
+                  <p className="chat-bubble-time">{format(new Date(msg.created_at), 'HH:mm')}</p>
                 </div>
               </div>
             </div>
@@ -98,12 +114,13 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
         <div ref={bottomRef} />
       </div>
 
+      {/* Input bar */}
       {isClosed ? (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: 13, color: 'var(--text-3)', background: 'var(--bg-2)' }}>
-          Chat cerrado — la ruta y sus mensajes han sido eliminados
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: 13, color: 'var(--text-3)', background: 'var(--bg-2)', flexShrink: 0 }}>
+          Chat cerrado
         </div>
       ) : (
-        <div className="chat-input-bar">
+        <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', flexShrink: 0, alignItems: 'flex-end' }}>
           <textarea
             className="chat-input"
             placeholder="Escribe un mensaje..."
@@ -111,6 +128,7 @@ function ChatTab({ route, inGracePeriod, chatDeadline }) {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
+            style={{ flex: 1 }}
           />
           <button className="btn btn-primary btn-icon" onClick={handleSend}
             disabled={!text.trim() || sending} aria-label="Enviar">
@@ -560,7 +578,7 @@ export default function EventDetailPage() {
         )}
 
         {tab === 'chat' && canChat && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+          <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
             <ChatTab route={route} inGracePeriod={inGracePeriod} chatDeadline={chatDeadline} />
           </div>
         )}
