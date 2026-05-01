@@ -53,6 +53,7 @@ export default function AuthPage() {
   const [errors, setErrors] = useState({})
   const [freeSpots, setFreeSpots] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [showInstall, setShowInstall] = useState(false)
   const [registered, setRegistered] = useState(false)
   const navigate = useNavigate()
   const login = useStore((s) => s.login)
