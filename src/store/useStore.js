@@ -27,7 +27,7 @@ const useStore = create(
 
       register: async (data) => {
         try {
-          const res = await api.register({
+          await api.register({
             username: data.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Date.now().toString().slice(-4),
             email: data.email,
             password: data.password,
@@ -43,9 +43,7 @@ const useStore = create(
             needs_food: data.needsFood || false,
             heard_from: data.heardFrom || '',
           })
-          setToken(res.access)
-          set({ currentUser: res.user, token: res.access })
-          return { user: res.user }
+          return { ok: true }
         } catch (e) {
           const errs = e.data || {}
           const msg = errs.email?.[0] || errs.username?.[0] || errs.error || 'Error al registrarse'

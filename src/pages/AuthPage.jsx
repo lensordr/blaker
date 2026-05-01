@@ -53,7 +53,7 @@ export default function AuthPage() {
   const [errors, setErrors] = useState({})
   const [freeSpots, setFreeSpots] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const [showInstall, setShowInstall] = useState(false)
+  const [registered, setRegistered] = useState(false)
   const navigate = useNavigate()
   const login = useStore((s) => s.login)
   const register = useStore((s) => s.register)
@@ -339,9 +339,7 @@ export default function AuthPage() {
             <button type="button" className="btn btn-ghost btn-full btn-sm" onClick={() => navigate('/auth/forgot')} style={{ marginTop: -4 }}>
               ¿Olvidaste tu contraseña?
             </button>
-            <p style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center' }}>
-              Admin de prueba: admin@blaker.es / rutillas2024
-            </p>
+
           </form>
         )}
 
