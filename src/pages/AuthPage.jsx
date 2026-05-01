@@ -336,8 +336,11 @@ export default function AuthPage() {
             <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
               {loading ? <span className="spinner" /> : 'Entrar'}
             </button>
+            <button type="button" className="btn btn-ghost btn-full btn-sm" onClick={() => navigate('/auth/forgot')} style={{ marginTop: -4 }}>
+              ¿Olvidaste tu contraseña?
+            </button>
             <p style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center' }}>
-              Admin de prueba: admin@blaker.es / blaker2024
+              Admin de prueba: admin@blaker.es / rutillas2024
             </p>
           </form>
         )}

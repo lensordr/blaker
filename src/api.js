@@ -54,6 +54,11 @@ export const api = {
   getPaymentLink: () => request('GET', '/payments/link/'),
   getAppInfo: () => request('GET', '/health/', null, false),
 
+  // Email
+  confirmEmail: (token) => request('GET', `/auth/confirm/${token}/`, null, false),
+  forgotPassword: (email) => request('POST', '/auth/forgot-password/', { email }, false),
+  resetPassword: (token, password) => request('POST', '/auth/reset-password/', { token, password }, false),
+
   // Admin
   getUsers: () => request('GET', '/admin/users/'),
   updateUser: (id, data) => request('PATCH', `/admin/users/${id}/`, data),

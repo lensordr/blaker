@@ -8,6 +8,7 @@ import AuthPage from './pages/AuthPage'
 import HomePage from './pages/HomePage'
 import EventsPage from './pages/EventsPage'
 import EventDetailPage, { ChatPage } from './pages/EventDetailPage'
+import { ForgotPasswordPage, ResetPasswordPage, ConfirmEmailPage } from './pages/ForgotPasswordPage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/AdminPage'
@@ -64,10 +65,10 @@ export default function App() {
       <NotificationPoller />
       <Routes>
         {/* Auth */}
-        <Route
-          path="/auth"
-          element={currentUser ? <Navigate to="/" replace /> : <AuthPage />}
-        />
+        <Route path="/auth" element={currentUser ? <Navigate to="/events" replace /> : <AuthPage />} />
+        <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset/:token" element={<ResetPasswordPage />} />
+        <Route path="/auth/confirm/:token" element={<ConfirmEmailPage />} />
 
         {/* Protected routes */}
         <Route
