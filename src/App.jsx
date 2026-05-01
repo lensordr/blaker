@@ -21,7 +21,7 @@ function ProtectedRoute({ children }) {
 function AdminRoute({ children }) {
   const currentUser = useStore((s) => s.currentUser)
   if (!currentUser) return <Navigate to="/auth" replace />
-  if (!currentUser.is_staff) return <Navigate to="/" replace />
+  if (!currentUser.is_staff) return <Navigate to="/events" replace />
   return children
 }
 
