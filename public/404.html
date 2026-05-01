@@ -2,17 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>BLAKER</title>
+    <title>RUTILLAS</title>
     <script>
-      // Single Page App redirect for GitHub Pages
-      // When GitHub serves this 404.html, save the intended path
-      // and redirect to the root so React Router can handle it
       (function() {
-        var base = '/';
-        var path = window.location.pathname.replace(base, '') || '/';
+        var path = window.location.pathname;
         var search = window.location.search;
+        // Save full path and redirect to root
         sessionStorage.setItem('spa_redirect', path + search);
-        window.location.replace(base + '/');
+        window.location.replace('/');
       })();
     </script>
   </head>
