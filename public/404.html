@@ -8,7 +8,7 @@
       // When GitHub serves this 404.html, save the intended path
       // and redirect to the root so React Router can handle it
       (function() {
-        var base = '/rutillas.app';
+        var base = '/';
         var path = window.location.pathname.replace(base, '') || '/';
         var search = window.location.search;
         sessionStorage.setItem('spa_redirect', path + search);

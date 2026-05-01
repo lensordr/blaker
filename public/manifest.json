@@ -2,15 +2,15 @@
   "name": "BLAKER Riders",
   "short_name": "BLAKER",
   "description": "Motorcycle event community by Blaker",
-  "start_url": "/rutillas.app/",
-  "scope": "/rutillas.app/",
+  "start_url": "//",
+  "scope": "//",
   "display": "standalone",
   "background_color": "#f5f5f5",
   "theme_color": "#f5f5f5",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/rutillas.app/favicon.svg",
+      "src": "//favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

@@ -82,7 +82,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <BrowserRouter basename="/rutillas.app" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename="/" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ToastProvider />
       <NotificationPoller />
       <Routes>
