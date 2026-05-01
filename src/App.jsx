@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, Component } from 'react'
 import useStore from './store/useStore'
 import BottomNav from './components/BottomNav'
 import { ToastProvider } from './components/Toast'
@@ -12,6 +12,27 @@ import { ForgotPasswordPage, ResetPasswordPage, ConfirmEmailPage } from './pages
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/AdminPage'
+
+// Error boundary to catch React crashes
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e.message } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 32, textAlign: 'center', fontFamily: 'sans-serif' }}>
+          <h2 style={{ color: '#e8320a', marginBottom: 12 }}>Error</h2>
+          <p style={{ color: '#555', fontSize: 14 }}>{this.state.error}</p>
+          <button onClick={() => { localStorage.clear(); window.location.reload() }}
+            style={{ marginTop: 20, padding: '10px 20px', background: '#e8320a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            Limpiar caché y recargar
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function ProtectedRoute({ children }) {
   const currentUser = useStore((s) => s.currentUser)
@@ -60,6 +81,7 @@ export default function App() {
   const currentUser = useStore((s) => s.currentUser)
 
   return (
+    <ErrorBoundary>
     <BrowserRouter basename="/rutillas.app" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ToastProvider />
       <NotificationPoller />
@@ -144,5 +166,6 @@ export default function App() {
         <Route path="*" element={<Navigate to={currentUser ? '/events' : '/auth'} replace />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   )
 }
