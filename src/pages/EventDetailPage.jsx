@@ -145,36 +145,64 @@ export function ChatPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
-  const routeId = parseInt(id)
+  const routeId = Number(id)
   const messages = useStore((s) => s.messages[routeId] || [])
   const fetchMessages = useStore((s) => s.fetchMessages)
   const sendMessage = useStore((s) => s.sendMessage)
   const routes = useStore((s) => s.routes)
+  const fetchRoutes = useStore((s) => s.fetchRoutes)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const [accessDenied, setAccessDenied] = useState(false)
   const bottomRef = useRef(null)
+  const isInitialLoad = useRef(true)
   const toast = useToast()
 
   const route = routes.find((r) => r.id === routeId)
 
+  // Access guard — user must be approved or admin/creator
   useEffect(() => {
+    if (!route) {
+      if (!routes.length) fetchRoutes()
+      return
+    }
+    const isAdmin = currentUser?.is_staff
+    const isCreator = route.creator?.id === currentUser?.id
+    const isApproved = route.user_status === 'approved'
+    if (!isAdmin && !isCreator && !isApproved) {
+      setAccessDenied(true)
+    }
+  }, [route, currentUser, routes.length, fetchRoutes])
+
+  useEffect(() => {
+    if (accessDenied) return
     fetchMessages(routeId)
     const interval = setInterval(() => fetchMessages(routeId), 5000)
     return () => clearInterval(interval)
-  }, [routeId])
+  }, [routeId, fetchMessages, accessDenied])
 
+  // Scroll to bottom — instant on initial load, smooth on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!bottomRef.current) return
+    if (isInitialLoad.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'instant' })
+      isInitialLoad.current = false
+    } else {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages.length])
 
   const handleSend = async () => {
     const trimmed = text.trim()
     if (!trimmed || sending) return
     setSending(true)
-    setText('')
     const result = await sendMessage(routeId, trimmed)
     setSending(false)
-    if (result?.error) toast(result.error, 'error')
+    if (result?.error) {
+      toast(result.error, 'error')
+    } else {
+      setText('')
+    }
   }
 
   const handleKeyDown = (e) => {
@@ -183,18 +211,32 @@ export function ChatPage() {
 
   const getName = (msg) => msg.user?.first_name || msg.user?.username || '?'
 
+  const isRouteActive = route?.status === 'active' || route?.status === 'upcoming'
+
+  // Access denied screen
+  if (accessDenied) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', background: 'var(--bg)' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Acceso restringido</p>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 24 }}>Necesitas ser aceptado en la ruta para acceder al chat.</p>
+        <button className="btn btn-primary" onClick={() => navigate(`/events/${id}`)}>Ver la ruta</button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', flexShrink: 0 }}>
-        <button className="btn btn-ghost btn-icon" onClick={() => navigate(-1)}><IconBack /></button>
+        <button className="btn btn-ghost btn-icon" onClick={() => navigate(`/events/${id}`)}><IconBack /></button>
         <div style={{ flex: 1 }}>
           <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 900, textTransform: 'uppercase' }}>
             {route?.title || 'Chat'}
           </p>
           <p style={{ fontSize: 11, color: 'var(--text-3)' }}>Chat de la ruta</p>
         </div>
-        <span className="live-dot" />
+        {isRouteActive && <span className="live-dot" />}
       </div>
 
       {/* Messages */}
@@ -224,21 +266,36 @@ export function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', flexShrink: 0, alignItems: 'flex-end', paddingBottom: 'calc(10px + var(--safe-bottom))' }}>
-        <textarea
-          className="chat-input"
-          placeholder="Escribe un mensaje..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={1}
-          style={{ flex: 1 }}
-        />
-        <button className="btn btn-primary btn-icon" onClick={handleSend} disabled={!text.trim() || sending}>
-          <IconSend size={18} />
-        </button>
-      </div>
+      {/* Input — hidden for ended routes past the 24h window */}
+      {(() => {
+        const chatDeadline = route?.end_date
+          ? new Date(new Date(route.end_date).getTime() + 24 * 60 * 60 * 1000)
+          : null
+        const chatOpen = chatDeadline ? new Date() < chatDeadline : true
+        if (!chatOpen) {
+          return (
+            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-3)' }}>El chat de esta ruta está cerrado</p>
+            </div>
+          )
+        }
+        return (
+          <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', flexShrink: 0, alignItems: 'flex-end', paddingBottom: 'calc(10px + var(--safe-bottom))' }}>
+            <textarea
+              className="chat-input"
+              placeholder="Escribe un mensaje..."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              style={{ flex: 1 }}
+            />
+            <button className="btn btn-primary btn-icon" onClick={handleSend} disabled={!text.trim() || sending}>
+              {sending ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <IconSend size={18} />}
+            </button>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -330,7 +387,6 @@ export default function EventDetailPage() {
 
   const tabs = [
     { key: 'info', label: 'Info' },
-    ...(canChat ? [{ key: 'chat', label: 'Chat' }] : []),
     ...(canPhotos ? [{ key: 'photos', label: 'Fotos' }] : []),
   ]
 
