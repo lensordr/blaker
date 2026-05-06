@@ -149,12 +149,8 @@ export default function AuthPage() {
       setErrors({ general: result.error })
       setStep(1)
     } else {
-      // Show PWA install first if available, then email confirm
-      if (deferredPrompt) {
-        setShowInstall(true)
-      } else {
-        setShowEmailConfirm(true)
-      }
+      // Always show install screen first, then email confirm
+      setShowInstall(true)
     }
   }
 
@@ -196,49 +192,70 @@ export default function AuthPage() {
             rutillasmoto@outlook.com
           </a>
         </p>
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 16, maxWidth: 320 }}>
-          📱 <strong>iPhone:</strong> Safari → Compartir → Añadir a pantalla de inicio
-        </p>
       </div>
     )
   }
 
   // PWA install screen — shown before email confirm screen
   if (showInstall) {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    const goNext = () => { setShowInstall(false); setShowEmailConfirm(true) }
+
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
         <div style={{ fontSize: 64, marginBottom: 16 }}>📲</div>
         <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>
-          Añade RUTILLAS a tu pantalla
+          Instala RUTILLAS
         </h2>
-        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 32, lineHeight: 1.6, maxWidth: 320 }}>
-          Instala la app en tu móvil para acceder rápido a tus rutas, chat y notificaciones.
+        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 28, lineHeight: 1.6, maxWidth: 340 }}>
+          Añade la app a tu pantalla de inicio para acceder rápido a tus rutas, chat y notificaciones.
         </p>
-        <button
-          className="btn btn-primary btn-lg btn-full"
-          style={{ maxWidth: 320, marginBottom: 12 }}
-          onClick={async () => {
-            if (deferredPrompt) {
+
+        {/* Android — native install button */}
+        {deferredPrompt && (
+          <button
+            className="btn btn-primary btn-lg btn-full"
+            style={{ maxWidth: 320, marginBottom: 12 }}
+            onClick={async () => {
               deferredPrompt.prompt()
               await deferredPrompt.userChoice
               setDeferredPrompt(null)
-            }
-            setShowInstall(false)
-            setShowEmailConfirm(true)
-          }}
-        >
-          📲 Añadir a pantalla de inicio
-        </button>
+              goNext()
+            }}
+          >
+            📲 Instalar en mi móvil
+          </button>
+        )}
+
+        {/* iPhone — step by step instructions */}
+        {(isIOS || !deferredPrompt) && (
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px', maxWidth: 340, width: '100%', marginBottom: 16, textAlign: 'left' }}>
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 14 }}>
+              {isIOS ? '📱 iPhone / iPad' : '📱 Cómo instalar'}
+            </p>
+            {[
+              { n: '1', text: 'Abre esta página en Safari' },
+              { n: '2', text: 'Toca el botón Compartir  ⎙  (abajo en iPhone, arriba en iPad)' },
+              { n: '3', text: 'Desplázate y toca "Añadir a pantalla de inicio"' },
+              { n: '4', text: 'Toca "Añadir" para confirmar' },
+            ].map((s) => (
+              <div key={s.n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: 13, flexShrink: 0 }}>
+                  {s.n}
+                </div>
+                <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.5, paddingTop: 3 }}>{s.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         <button
           className="btn btn-ghost btn-full"
           style={{ maxWidth: 320 }}
-          onClick={() => { setShowInstall(false); setShowEmailConfirm(true) }}
+          onClick={goNext}
         >
-          Ahora no
+          Continuar sin instalar →
         </button>
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 20 }}>
-          En iPhone: Safari → Compartir → Añadir a pantalla de inicio
-        </p>
       </div>
     )
   }
