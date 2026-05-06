@@ -52,6 +52,7 @@ export const api = {
 
   // Payment
   getPaymentLink: () => request('GET', '/payments/link/'),
+  getHealth: () => request('GET', '/health/', null, false),
   // Promo codes
   getPromoCodes: () => request('GET', '/admin/promo-codes/'),
   createPromoCode: (data) => request('POST', '/admin/promo-codes/', data),

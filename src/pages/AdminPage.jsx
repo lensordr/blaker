@@ -456,6 +456,7 @@ export default function AdminPage() {
   const fetchAdminUsers = useStore((s) => s.fetchAdminUsers)
   const participants = useStore((s) => s.participants)
   const toast = useToast()
+  const [freeStats, setFreeStats] = useState(null)
 
   const [showForm, setShowForm] = useState(false)
   const [editRoute, setEditRoute] = useState(null)
@@ -467,6 +468,7 @@ export default function AdminPage() {
   useEffect(() => {
     fetchRoutes()
     fetchAdminUsers()
+    api.getHealth().then(setFreeStats).catch(() => {})
   }, [])
 
   if (!currentUser?.is_staff) {
@@ -504,10 +506,11 @@ export default function AdminPage() {
             { label: 'Rutas', value: routes.length },
             { label: 'Riders', value: adminUsers.length },
             { label: 'Pendientes', value: totalPending, accent: totalPending > 0 },
+            { label: 'Free slots', value: freeStats ? `${freeStats.free_spots_left}/50` : '…', accent: false },
           ].map(s => (
             <div key={s.label} style={{ flex: 1, background: 'var(--bg-3)', border: `1px solid ${s.accent ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 'var(--radius)', padding: 10, textAlign: 'center' }}>
-              <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 900, color: s.accent ? 'var(--accent)' : 'var(--text)' }}>{s.value}</p>
-              <p style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</p>
+              <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 900, color: s.accent ? 'var(--accent)' : 'var(--text)' }}>{s.value}</p>
+              <p style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</p>
             </div>
           ))}
         </div>

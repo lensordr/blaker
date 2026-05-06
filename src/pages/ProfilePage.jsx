@@ -418,7 +418,7 @@ export default function ProfilePage() {
               <InfoRow label="Ubicación" value={currentUser?.location} />
               <InfoRow label="Nivel" value={EXPERIENCE_LABELS[currentUser?.experience]} />
               <InfoRow label="Comida" value={currentUser?.needs_food ? 'Sí necesita' : 'No necesita'} />
-              <InfoRow label="Suscriptor" value={currentUser?.is_subscribed ? '⭐ Sí' : currentUser?.is_free_user ? '🆓 Usuario gratuito' : 'No'} />
+              <InfoRow label="Suscriptor" value={currentUser?.is_subscribed ? (currentUser?.promo_expires_at ? `⭐ Promo hasta ${new Date(currentUser.promo_expires_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}` : '⭐ Sí') : currentUser?.is_free_user ? '🆓 Usuario gratuito' : 'No'} />
               {currentUser?.insta_handle && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Instagram</span>
