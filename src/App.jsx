@@ -27,8 +27,8 @@ class ErrorBoundary extends Component {
             onClick={() => {
               localStorage.clear()
               sessionStorage.clear()
-              // Hard reload — bypasses browser cache
-              window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now()
+              // Force fetch new bundle — clears HTTP cache too
+              window.location.href = '/?nocache=' + Date.now()
             }}
             style={{ marginTop: 4, padding: '10px 20px', background: '#e8320a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
             Limpiar caché y recargar

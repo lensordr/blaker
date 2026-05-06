@@ -221,12 +221,13 @@ export function ChatPage() {
 
   // Scroll to bottom when messages arrive
   const prevLengthRef = useRef(0)
+  const msgCount = messages?.length ?? 0
   useEffect(() => {
-    if (!bottomRef.current || messages.length === 0) return
+    if (!bottomRef.current || msgCount === 0) return
     const isFirst = prevLengthRef.current === 0
-    prevLengthRef.current = messages.length
+    prevLengthRef.current = msgCount
     bottomRef.current.scrollIntoView({ behavior: isFirst ? 'instant' : 'smooth' })
-  }, [messages.length])
+  }, [msgCount])
 
   const handleSend = async () => {
     const trimmed = text.trim()
@@ -285,7 +286,7 @@ export function ChatPage() {
             <span className="spinner" />
           </div>
         )}
-        {loaded && messages.length === 0 && (
+        {loaded && (messages?.length ?? 0) === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8, color: 'var(--text-3)', paddingTop: 60 }}>
             <IconChat size={40} />
             <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Sin mensajes aún</p>
