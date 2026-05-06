@@ -40,8 +40,6 @@ function EditProfileModal({ onClose }) {
     moto_model: currentUser?.moto_model || '',
     experience: currentUser?.experience || '',
     insta_handle: currentUser?.insta_handle || '',
-    needs_food: currentUser?.needs_food ?? false,
-    isSubscriber: currentUser?.is_subscribed ?? false,
     newPassword: '',
   })
   const [errors, setErrors] = useState({})
@@ -70,7 +68,6 @@ function EditProfileModal({ onClose }) {
       moto_model: form.moto_model.trim(),
       experience: form.experience,
       insta_handle: form.insta_handle.trim(),
-      needs_food: form.needs_food,
     }
     if (form.newPassword) updates.password = form.newPassword
 
@@ -175,22 +172,6 @@ function EditProfileModal({ onClose }) {
                 </select>
               </div>
 
-              <div style={{ background: 'var(--bg-3)', borderRadius: 'var(--radius)', padding: '4px 14px' }}>
-                <div className="toggle-row">
-                  <span className="toggle-label">¿Necesitas comida en el evento?</span>
-                  <label className="toggle">
-                    <input type="checkbox" checked={form.needs_food} onChange={(e) => set('needs_food', e.target.checked)} />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-                <div className="toggle-row">
-                  <span className="toggle-label">¿Eres suscriptor de Blaker?</span>
-                  <label className="toggle">
-                    <input type="checkbox" checked={form.isSubscriber} onChange={(e) => set('isSubscriber', e.target.checked)} />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              </div>
             </>
           )}
 
@@ -412,7 +393,6 @@ export default function ProfilePage() {
               <InfoRow label="Moto" value={currentUser?.moto_model} highlight />
               <InfoRow label="Ubicación" value={currentUser?.location} />
               <InfoRow label="Nivel" value={EXPERIENCE_LABELS[currentUser?.experience]} />
-              <InfoRow label="Comida" value={currentUser?.needs_food ? 'Sí necesita' : 'No necesita'} />
               <InfoRow label="Suscriptor" value={currentUser?.is_subscribed ? (currentUser?.promo_expires_at ? `⭐ Promo hasta ${new Date(currentUser.promo_expires_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}` : '⭐ Sí') : currentUser?.is_free_user ? '🆓 Usuario gratuito' : 'No'} />
               {currentUser?.insta_handle && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
