@@ -22,9 +22,15 @@ class ErrorBoundary extends Component {
       return (
         <div style={{ padding: 32, textAlign: 'center', fontFamily: 'sans-serif' }}>
           <h2 style={{ color: '#e8320a', marginBottom: 12 }}>Error</h2>
-          <p style={{ color: '#555', fontSize: 14 }}>{this.state.error}</p>
-          <button onClick={() => { localStorage.clear(); window.location.reload() }}
-            style={{ marginTop: 20, padding: '10px 20px', background: '#e8320a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+          <p style={{ color: '#555', fontSize: 14, marginBottom: 20 }}>{this.state.error}</p>
+          <button
+            onClick={() => {
+              localStorage.clear()
+              sessionStorage.clear()
+              // Hard reload — bypasses browser cache
+              window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now()
+            }}
+            style={{ marginTop: 4, padding: '10px 20px', background: '#e8320a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
             Limpiar caché y recargar
           </button>
         </div>
