@@ -75,10 +75,11 @@ export default function AuthPage() {
     location: '',
     experience: '',
     // Step 3 — preferences
-    needsFood: false,
-    isSubscriber: false,
     instaHandle: '',
     heardFrom: '',
+    promoCode: '',
+    latitude: null,
+    longitude: null,
   })
 
   const set = (field, value) => {
@@ -140,17 +141,7 @@ export default function AuthPage() {
     if (!validateStep3()) return
     setLoading(true)
 
-    // Get geolocation
-    let latitude = null, longitude = null
-    try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000, enableHighAccuracy: true })
-      )
-      latitude = pos.coords.latitude
-      longitude = pos.coords.longitude
-    } catch (_) {}
-
-    const result = await register({ ...form, latitude, longitude })
+    const result = await register({ ...form })
     setLoading(false)
     if (result.error) {
       setErrors({ general: result.error })
@@ -410,27 +401,39 @@ export default function AuthPage() {
                   <span style={{ fontSize: 20 }}>📍</span>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Permitir ubicación</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>Para recibir alertas de rutas cerca de ti y acceso gratuito</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>Para recibir alertas de rutas cerca de ti</p>
                   </div>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className={`btn btn-sm ${form.latitude ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={async () => {
                       try {
                         const pos = await new Promise((res, rej) =>
-                          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+                          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, enableHighAccuracy: true })
                         )
                         set('latitude', pos.coords.latitude)
                         set('longitude', pos.coords.longitude)
                         toast('Ubicación guardada ✓', 'success')
-                      } catch {
-                        toast('No se pudo obtener la ubicación', 'error')
+                      } catch (err) {
+                        if (err.code === 1) {
+                          toast('Permiso denegado. Actívalo en ajustes del navegador.', 'error')
+                        } else {
+                          toast('No se pudo obtener la ubicación', 'error')
+                        }
                       }
                     }}
                   >
-                    {form.latitude ? '✓ OK' : 'Permitir'}
+                    {form.latitude ? '✓ Guardada' : 'Permitir'}
                   </button>
                 </div>
+
+                {/* Instagram */}
+                <div className="form-group">
+                  <label className="form-label">Instagram <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opcional)</span></label>
+                  <input className="form-input" type="text" placeholder="@tuusuario"
+                    value={form.instaHandle} onChange={(e) => set('instaHandle', e.target.value)} />
+                </div>
+
                 {/* Promo code */}
                 <div className="form-group">
                   <label className="form-label">Código promocional <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opcional)</span></label>
@@ -455,31 +458,6 @@ export default function AuthPage() {
                   </select>
                   {errors.heardFrom && <span className="form-error">{errors.heardFrom}</span>}
                 </div>
-
-                <div style={{ background: 'var(--bg-3)', borderRadius: 'var(--radius)', padding: '4px 14px' }}>
-                  <div className="toggle-row">
-                    <span className="toggle-label">¿Necesitas comida en el evento?</span>
-                    <label className="toggle">
-                      <input type="checkbox" checked={form.needsFood} onChange={(e) => set('needsFood', e.target.checked)} />
-                      <span className="toggle-slider" />
-                    </label>
-                  </div>
-                  <div className="toggle-row">
-                    <span className="toggle-label">¿Eres suscriptor de Blaker?</span>
-                    <label className="toggle">
-                      <input type="checkbox" checked={form.isSubscriber} onChange={(e) => set('isSubscriber', e.target.checked)} />
-                      <span className="toggle-slider" />
-                    </label>
-                  </div>
-                </div>
-
-                {form.isSubscriber && (
-                  <div className="form-group">
-                    <label className="form-label">Instagram (opcional)</label>
-                    <input className="form-input" type="text" placeholder="@tuusuario"
-                      value={form.instaHandle} onChange={(e) => set('instaHandle', e.target.value)} />
-                  </div>
-                )}
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button type="button" className="btn btn-ghost" onClick={() => setStep(2)}>← Atrás</button>
