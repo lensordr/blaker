@@ -245,6 +245,122 @@ function SettingsModal({ onClose }) {
   )
 }
 
+// ─── Edit User Modal ──────────────────────────────────────────────────────────
+function EditUserModal({ user, onClose, onSaved }) {
+  const toast = useToast()
+  const fetchAdminUsers = useStore((s) => s.fetchAdminUsers)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    subscription_type: user.is_subscribed ? 'subscribed' : user.is_free_user ? 'free' : 'none',
+    promo_expires_at: user.promo_expires_at ? user.promo_expires_at.slice(0, 10) : '',
+  })
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+
+    const data = {
+      is_subscribed: form.subscription_type === 'subscribed',
+      is_free_user: form.subscription_type === 'free',
+      promo_expires_at: form.subscription_type === 'subscribed' && form.promo_expires_at
+        ? new Date(form.promo_expires_at + 'T23:59:59').toISOString()
+        : null,
+    }
+
+    try {
+      await api.updateUser(user.id, data)
+      toast('Usuario actualizado ✓', 'success')
+      await fetchAdminUsers()
+      onSaved()
+    } catch (err) {
+      toast(err.data?.error || 'Error al actualizar', 'error')
+    }
+    setSaving(false)
+  }
+
+  const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username
+
+  const SUB_OPTIONS = [
+    { value: 'none', label: '🚫 Sin acceso', desc: 'No puede unirse a rutas' },
+    { value: 'free', label: '🆓 Usuario gratuito', desc: 'Acceso completo sin pago (zona Barcelona)' },
+    { value: 'subscribed', label: '⭐ Suscriptor', desc: 'Acceso completo de pago o promo' },
+  ]
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-handle" />
+
+        {/* User header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div className="avatar avatar-lg" style={{ fontSize: 22 }}>
+            {name[0]?.toUpperCase() || '?'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 900, textTransform: 'uppercase' }}>
+              {name}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.email}
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSave} className="stack">
+          <p className="section-title" style={{ marginBottom: 4 }}>Tipo de suscripción</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {SUB_OPTIONS.map((opt) => (
+              <label key={opt.value} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                background: form.subscription_type === opt.value ? 'var(--accent-dim)' : 'var(--bg-3)',
+                border: `1.5px solid ${form.subscription_type === opt.value ? 'var(--accent-border)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius)', padding: '12px 14px', cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}>
+                <input
+                  type="radio"
+                  name="subscription_type"
+                  value={opt.value}
+                  checked={form.subscription_type === opt.value}
+                  onChange={() => setForm((p) => ({ ...p, subscription_type: opt.value }))}
+                  style={{ accentColor: 'var(--accent)', width: 16, height: 16, flexShrink: 0 }}
+                />
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: form.subscription_type === opt.value ? 'var(--accent)' : 'var(--text)' }}>
+                    {opt.label}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>{opt.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {/* Promo expiry — only shown for subscribed */}
+          {form.subscription_type === 'subscribed' && (
+            <div className="form-group">
+              <label className="form-label">Acceso hasta <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opcional — vacío = sin límite)</span></label>
+              <input
+                className="form-input"
+                type="date"
+                value={form.promo_expires_at}
+                onChange={(e) => setForm((p) => ({ ...p, promo_expires_at: e.target.value }))}
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={saving}>
+              {saving ? <span className="spinner" /> : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Promo Codes Tab ──────────────────────────────────────────────────────────
 function PromoCodesTab() {
   const toast = useToast()
@@ -464,6 +580,8 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [tab, setTab] = useState('routes')
+  const [editUser, setEditUser] = useState(null)
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null)
 
   useEffect(() => {
     fetchRoutes()
@@ -482,6 +600,18 @@ export default function AdminPage() {
     setConfirmDelete(null)
     if (result?.error) toast(result.error, 'error')
     else toast('Ruta eliminada', 'error')
+  }
+
+  const handleDeleteUser = async () => {
+    try {
+      await api.deleteUser(confirmDeleteUser.id)
+      toast('Usuario eliminado', 'success')
+      fetchAdminUsers()
+      setConfirmDeleteUser(null)
+    } catch (err) {
+      toast(err.data?.error || 'Error al eliminar', 'error')
+      setConfirmDeleteUser(null)
+    }
   }
 
   const EXP = { beginner: 'Principiante', medio: 'Medio', advanced: 'Avanzado' }
@@ -562,23 +692,39 @@ export default function AdminPage() {
           <div className="stack">
             {adminUsers.length === 0 && <div className="empty-state"><IconUsers size={40} /><p className="empty-state-title">Sin riders</p></div>}
             {adminUsers.map(user => (
-              <div key={user.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <div className="avatar">{(user.first_name || user.username || '?')[0].toUpperCase()}</div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: 15 }}>{user.first_name} {user.last_name}</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-3)' }}>{user.email}</p>
+              <div key={user.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div className="avatar">{(user.first_name || user.username || '?')[0].toUpperCase()}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {user.first_name} {user.last_name}
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>{user.routes_count} ruta{user.routes_count !== 1 ? 's' : ''}</span>
                   </div>
-                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{user.routes_count} ruta{user.routes_count !== 1 ? 's' : ''}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {user.moto_type && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>🏍️ {MOTO[user.moto_type] || user.moto_type}</span>}
+                    {user.moto_model && <span style={{ fontSize: 11, background: 'var(--accent-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--accent)', fontWeight: 700 }}>{user.moto_model}</span>}
+                    {user.location && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>📍 {user.location}</span>}
+                    {user.experience && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>{EXP[user.experience]}</span>}
+                    {user.is_subscribed && <span style={{ fontSize: 11, background: 'var(--accent-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--accent)' }}>⭐ Suscriptor</span>}
+                    {user.is_free_user && <span style={{ fontSize: 11, background: 'var(--green-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--green)' }}>🆓 Free</span>}
+                    {!user.is_subscribed && !user.is_free_user && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-3)' }}>🚫 Sin acceso</span>}
+                    {user.insta_handle && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>📸 {user.insta_handle}</span>}
+                    {user.promo_expires_at && <span style={{ fontSize: 11, background: 'var(--yellow-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--yellow)' }}>⏳ hasta {new Date(user.promo_expires_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {user.moto_type && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>🏍️ {MOTO[user.moto_type] || user.moto_type}</span>}
-                  {user.moto_model && <span style={{ fontSize: 11, background: 'var(--accent-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--accent)', fontWeight: 700 }}>{user.moto_model}</span>}
-                  {user.location && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>📍 {user.location}</span>}
-                  {user.experience && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>{EXP[user.experience]}</span>}
-                  {user.is_subscribed && <span style={{ fontSize: 11, background: 'var(--accent-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--accent)' }}>⭐ Suscriptor</span>}
-                  {user.is_free_user && <span style={{ fontSize: 11, background: 'var(--green-dim)', borderRadius: 4, padding: '2px 7px', color: 'var(--green)' }}>🆓 Free</span>}
-                  {user.insta_handle && <span style={{ fontSize: 11, background: 'var(--bg-4)', borderRadius: 4, padding: '2px 7px', color: 'var(--text-2)' }}>📸 {user.insta_handle}</span>}
+                <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+                  <button className="btn btn-ghost btn-sm" style={{ flex: 1, borderRadius: 0, borderRight: '1px solid var(--border)' }}
+                    onClick={() => setEditUser(user)}>
+                    <IconEdit size={14} /> Suscripción
+                  </button>
+                  <button className="btn btn-ghost btn-sm" style={{ flex: 1, borderRadius: 0, color: 'var(--red)' }}
+                    onClick={() => setConfirmDeleteUser(user)}>
+                    <IconTrash size={14} /> Eliminar
+                  </button>
                 </div>
               </div>
             ))}
@@ -594,6 +740,13 @@ export default function AdminPage() {
       {showForm && <EventFormModal event={editRoute} onClose={() => { setShowForm(false); setEditRoute(null) }} />}
       {showParticipants && <ParticipantsModal route={showParticipants} onClose={() => setShowParticipants(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {editUser && (
+        <EditUserModal
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onSaved={() => setEditUser(null)}
+        />
+      )}
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -603,6 +756,24 @@ export default function AdminPage() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmDelete(null)}>Cancelar</button>
               <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleDelete}><IconTrash size={16} /> Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDeleteUser && (
+        <div className="modal-overlay" onClick={() => setConfirmDeleteUser(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <h2 className="modal-title" style={{ fontSize: 20 }}>¿Eliminar cuenta?</h2>
+            <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8 }}>
+              Se eliminará la cuenta de <strong>{confirmDeleteUser.first_name} {confirmDeleteUser.last_name}</strong> permanentemente.
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 24 }}>
+              {confirmDeleteUser.email} · {confirmDeleteUser.routes_count} ruta{confirmDeleteUser.routes_count !== 1 ? 's' : ''}
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmDeleteUser(null)}>Cancelar</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleDeleteUser}><IconTrash size={16} /> Eliminar</button>
             </div>
           </div>
         </div>

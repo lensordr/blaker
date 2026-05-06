@@ -68,6 +68,7 @@ export const api = {
   // Admin
   getUsers: () => request('GET', '/admin/users/'),
   updateUser: (id, data) => request('PATCH', `/admin/users/${id}/`, data),
+  deleteUser: (id) => request('DELETE', `/admin/users/${id}/`),
 }
 
 export function setToken(token) {
