@@ -53,6 +53,7 @@ export default function AuthPage() {
   const [errors, setErrors] = useState({})
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstall, setShowInstall] = useState(false)
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false)
   const navigate = useNavigate()
   const login = useStore((s) => s.login)
   const register = useStore((s) => s.register)
@@ -80,6 +81,7 @@ export default function AuthPage() {
     promoCode: '',
     latitude: null,
     longitude: null,
+    locationDenied: false,
   })
 
   const set = (field, value) => {
@@ -147,19 +149,55 @@ export default function AuthPage() {
       setErrors({ general: result.error })
       setStep(1)
     } else {
-      toast('¡Cuenta creada! Bienvenido a RUTILLAS 🏍️', 'success')
-      // Show PWA install prompt if available
-      if (deferredPrompt) {
-        setShowInstall(true)
-      } else {
-        navigate('/')
-      }
+      // Always show email confirmation screen first
+      setShowEmailConfirm(true)
     }
   }
 
   const stepTitles = ['Tu cuenta', 'Tu moto', 'Preferencias']
 
-  // PWA install screen shown after registration
+  // Email confirmation screen shown after registration
+  if (showEmailConfirm) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>📧</div>
+        <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>
+          Revisa tu email
+        </h2>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6, maxWidth: 380 }}>
+          Te hemos enviado un email a <strong style={{ color: 'var(--text)' }}>{form.email}</strong>
+        </p>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 32, lineHeight: 1.6, maxWidth: 380 }}>
+          Haz clic en el enlace del email para <strong>activar tu cuenta</strong> antes de iniciar sesión.
+        </p>
+        <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 24, maxWidth: 380 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
+            ⚠️ <strong style={{ color: 'var(--accent)' }}>Importante:</strong> Si no ves el email, revisa tu carpeta de <strong>spam o correo no deseado</strong>.
+          </p>
+        </div>
+        <button
+          className="btn btn-primary btn-lg btn-full"
+          style={{ maxWidth: 320, marginBottom: 12 }}
+          onClick={() => {
+            // Show PWA install if available, otherwise go to login
+            if (deferredPrompt) {
+              setShowEmailConfirm(false)
+              setShowInstall(true)
+            } else {
+              navigate('/auth')
+            }
+          }}
+        >
+          Entendido
+        </button>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 12 }}>
+          ¿No recibiste el email? Espera unos minutos o contacta con nosotros.
+        </p>
+      </div>
+    )
+  }
+
+  // PWA install screen shown after email confirmation
   if (showInstall) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
@@ -179,12 +217,12 @@ export default function AuthPage() {
               await deferredPrompt.userChoice
               setDeferredPrompt(null)
             }
-            navigate('/')
+            navigate('/auth')
           }}
         >
           📲 Añadir a pantalla de inicio
         </button>
-        <button className="btn btn-ghost btn-full" style={{ maxWidth: 320 }} onClick={() => navigate('/')}>
+        <button className="btn btn-ghost btn-full" style={{ maxWidth: 320 }} onClick={() => navigate('/auth')}>
           Ahora no
         </button>
         <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 20 }}>
@@ -375,6 +413,7 @@ export default function AuthPage() {
                   <input className="form-input" type="text" placeholder="Ej: Madrid, Barcelona..."
                     value={form.location} onChange={(e) => set('location', e.target.value)} />
                   {errors.location && <span className="form-error">{errors.location}</span>}
+                  <span className="form-hint">Si estás en el área de Barcelona, puedes optar a acceso gratuito</span>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Nivel de experiencia</label>
@@ -397,35 +436,64 @@ export default function AuthPage() {
             {step === 3 && (
               <form onSubmit={handleRegister} className="stack">
                 {/* Location permission request */}
-                <div style={{ background: 'var(--bg-3)', borderRadius: 'var(--radius)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>📍</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Permitir ubicación</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>Para recibir alertas de rutas cerca de ti</p>
+                {form.latitude ? (
+                  // Success state
+                  <div style={{ background: 'var(--green-dim)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 'var(--radius)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 20 }}>✅</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>Ubicación guardada</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>Recibirás alertas de rutas cerca de ti</p>
+                    </div>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { set('latitude', null); set('longitude', null) }}>
+                      Quitar
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${form.latitude ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={async () => {
-                      try {
-                        const pos = await new Promise((res, rej) =>
-                          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, enableHighAccuracy: true })
-                        )
-                        set('latitude', pos.coords.latitude)
-                        set('longitude', pos.coords.longitude)
-                        toast('Ubicación guardada ✓', 'success')
-                      } catch (err) {
-                        if (err.code === 1) {
-                          toast('Permiso denegado. Actívalo en ajustes del navegador.', 'error')
-                        } else {
-                          toast('No se pudo obtener la ubicación', 'error')
+                ) : form.locationDenied ? (
+                  // Denied state — show instructions instead of a toast
+                  <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border-2)', borderRadius: 'var(--radius)', padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 16 }}>📍</span>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Ubicación bloqueada</p>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5, marginBottom: 8 }}>
+                      Tu navegador tiene el permiso bloqueado. Para activarlo:
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
+                      <strong>iPhone:</strong> Ajustes → Safari → Ubicación → Permitir<br />
+                      <strong>Android:</strong> Ajustes del navegador → Permisos → Ubicación
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>
+                      No es obligatorio — puedes continuar sin ubicación.
+                    </p>
+                  </div>
+                ) : (
+                  // Default state
+                  <div style={{ background: 'var(--bg-3)', borderRadius: 'var(--radius)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 20 }}>📍</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Ubicación <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opcional)</span></p>
+                      <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>Mejora la precisión para el acceso gratuito</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={async () => {
+                        try {
+                          const pos = await new Promise((res, rej) =>
+                            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, enableHighAccuracy: true })
+                          )
+                          set('latitude', pos.coords.latitude)
+                          set('longitude', pos.coords.longitude)
+                          set('locationDenied', false)
+                        } catch (err) {
+                          set('locationDenied', true)
                         }
-                      }
-                    }}
-                  >
-                    {form.latitude ? '✓ Guardada' : 'Permitir'}
-                  </button>
-                </div>
+                      }}
+                    >
+                      Permitir
+                    </button>
+                  </div>
+                )}
 
                 {/* Instagram */}
                 <div className="form-group">
