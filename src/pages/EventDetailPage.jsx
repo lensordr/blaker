@@ -178,10 +178,10 @@ export function ChatPage() {
 
   useEffect(() => {
     if (accessDenied) return
-    fetchMessages(routeId)
-    const interval = setInterval(() => fetchMessages(routeId), 5000)
+    useStore.getState().fetchMessages(routeId)
+    const interval = setInterval(() => useStore.getState().fetchMessages(routeId), 5000)
     return () => clearInterval(interval)
-  }, [routeId, fetchMessages, accessDenied])
+  }, [routeId, accessDenied])
 
   // Scroll to bottom — instant on initial load, smooth on new messages
   useEffect(() => {

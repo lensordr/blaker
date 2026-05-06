@@ -13,22 +13,20 @@ function NotifIcon({ type }) {
 export default function NotificationsPage() {
   const navigate = useNavigate()
   const notifications = useStore((s) => s.notifications)
-  const fetchNotifications = useStore((s) => s.fetchNotifications)
   const markNotificationRead = useStore((s) => s.markNotificationRead)
-  const markAllNotificationsRead = useStore((s) => s.markAllNotificationsRead)
 
   const hasUnread = notifications.some((n) => !n.read)
 
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 15000)
+    useStore.getState().fetchNotifications()
+    const interval = setInterval(() => useStore.getState().fetchNotifications(), 15000)
     return () => clearInterval(interval)
-  }, [fetchNotifications])
+  }, []) // run once on mount
 
   useEffect(() => {
-    const t = setTimeout(() => markAllNotificationsRead(), 1500)
+    const t = setTimeout(() => useStore.getState().markAllNotificationsRead(), 1500)
     return () => clearTimeout(t)
-  }, [markAllNotificationsRead])
+  }, []) // run once on mount
 
   const handleClick = (notif) => {
     markNotificationRead(notif.id)
@@ -45,7 +43,7 @@ export default function NotificationsPage() {
           </h1>
         </div>
         {hasUnread && (
-          <button className="btn btn-ghost btn-sm" onClick={markAllNotificationsRead}>
+          <button className="btn btn-ghost btn-sm" onClick={() => useStore.getState().markAllNotificationsRead()}>
             <IconCheck size={14} /> Leer todo
           </button>
         )}

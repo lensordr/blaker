@@ -119,7 +119,7 @@ function ParticipantsModal({ route, onClose }) {
   const updateParticipant = useStore((s) => s.updateParticipant)
   const toast = useToast()
 
-  useEffect(() => { fetchParticipants(route.id) }, [route.id])
+  useEffect(() => { useStore.getState().fetchParticipants(route.id) }, [route.id])
 
   const EXP = { beginner: 'Principiante', medio: 'Medio', advanced: 'Avanzado' }
   const pending = participants.filter(p => p.status === 'pending')

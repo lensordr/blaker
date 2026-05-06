@@ -64,21 +64,19 @@ function AppLayout({ children }) {
 
 // Global notification poller — runs as long as user is logged in
 function NotificationPoller() {
-  const currentUser = useStore((s) => s.currentUser)
-  const fetchNotifications = useStore((s) => s.fetchNotifications)
-  const refreshUser = useStore((s) => s.refreshUser)
+  const currentUserId = useStore((s) => s.currentUser?.id)
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!currentUserId) return
     // Fetch immediately on mount/login
-    fetchNotifications()
-    refreshUser()
+    useStore.getState().fetchNotifications()
+    useStore.getState().refreshUser()
     // Poll every 8 seconds
     const interval = setInterval(() => {
-      fetchNotifications()
+      useStore.getState().fetchNotifications()
     }, 8000)
     return () => clearInterval(interval)
-  }, [currentUser?.id, fetchNotifications, refreshUser])
+  }, [currentUserId]) // only re-run when user changes
 
   return null
 }

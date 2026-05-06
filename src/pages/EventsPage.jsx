@@ -221,8 +221,8 @@ export default function EventsPage() {
   const [showCityFilter, setShowCityFilter] = useState(false)
 
   useEffect(() => {
-    fetchRoutes(citySearch || null)
-  }, [fetchRoutes, citySearch])
+    useStore.getState().fetchRoutes(citySearch || null)
+  }, [citySearch]) // fetchRoutes is stable via getState(), only re-run when city changes
 
   // Get unique cities from loaded routes
   const availableCities = [...new Set(routes.map(r => r.city).filter(Boolean))].sort()
