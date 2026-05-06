@@ -140,65 +140,112 @@ function EditRouteModal({ route, onClose, onDelete }) {
   )
 }
 
-// ─── Chat Page (standalone, no flex chain issues) ─────────────────────────────
+// ─── Chat Page ────────────────────────────────────────────────────────────────
 export function ChatPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const currentUser = useStore((s) => s.currentUser)
   const routeId = Number(id)
+
+  // Only subscribe to data, never to actions
+  const currentUser = useStore((s) => s.currentUser)
   const messages = useStore((s) => s.messages[routeId] || [])
-  const fetchMessages = useStore((s) => s.fetchMessages)
-  const sendMessage = useStore((s) => s.sendMessage)
-  const routes = useStore((s) => s.routes)
-  const fetchRoutes = useStore((s) => s.fetchRoutes)
+  const routeTitle = useStore((s) => {
+    const r = s.routes.find((r) => r.id === routeId)
+    return r?.title || null
+  })
+  const routeStatus = useStore((s) => {
+    const r = s.routes.find((r) => r.id === routeId)
+    return r?.status || null
+  })
+  const routeEndDate = useStore((s) => {
+    const r = s.routes.find((r) => r.id === routeId)
+    return r?.end_date || null
+  })
+  const userStatus = useStore((s) => {
+    const r = s.routes.find((r) => r.id === routeId)
+    return r?.user_status || null
+  })
+  const isCreator = useStore((s) => {
+    const r = s.routes.find((r) => r.id === routeId)
+    return r?.creator?.id === s.currentUser?.id
+  })
+
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const bottomRef = useRef(null)
-  const isInitialLoad = useRef(true)
+  const pollerRef = useRef(null)
   const toast = useToast()
 
-  const route = routes.find((r) => r.id === routeId)
+  const isAdmin = currentUser?.is_staff
+  const isApproved = userStatus === 'approved'
+  const isRouteActive = routeStatus === 'active' || routeStatus === 'upcoming'
 
-  // Load routes once if store is empty
-  useEffect(() => {
-    if (!routes.length) fetchRoutes()
-  }, []) // eslint-disable-line
+  // Check chat deadline
+  const chatOpen = routeEndDate
+    ? new Date() < new Date(new Date(routeEndDate).getTime() + 24 * 60 * 60 * 1000)
+    : true
 
-  // Access guard — runs once when route becomes available
+  // On mount: load routes if needed, then load messages, then start polling
   useEffect(() => {
-    if (!route) return
-    const isAdmin = currentUser?.is_staff
-    const isCreator = route.creator?.id === currentUser?.id
-    const isApproved = route.user_status === 'approved'
-    if (!isAdmin && !isCreator && !isApproved) {
-      setAccessDenied(true)
+    let cancelled = false
+
+    async function init() {
+      // Make sure routes are loaded so we can check access
+      const state = useStore.getState()
+      if (!state.routes.length) {
+        await state.fetchRoutes()
+      }
+
+      if (cancelled) return
+
+      // Check access using fresh state
+      const freshState = useStore.getState()
+      const route = freshState.routes.find((r) => r.id === routeId)
+      if (route) {
+        const admin = freshState.currentUser?.is_staff
+        const creator = route.creator?.id === freshState.currentUser?.id
+        const approved = route.user_status === 'approved'
+        if (!admin && !creator && !approved) {
+          setAccessDenied(true)
+          return
+        }
+      }
+
+      // Load messages
+      await useStore.getState().fetchMessages(routeId)
+      if (cancelled) return
+      setLoaded(true)
+
+      // Start polling every 5 seconds
+      pollerRef.current = setInterval(() => {
+        useStore.getState().fetchMessages(routeId)
+      }, 5000)
     }
-  }, [route?.id, route?.user_status]) // eslint-disable-line
 
-  useEffect(() => {
-    if (accessDenied) return
-    useStore.getState().fetchMessages(routeId)
-    const interval = setInterval(() => useStore.getState().fetchMessages(routeId), 5000)
-    return () => clearInterval(interval)
-  }, [routeId, accessDenied])
+    init()
 
-  // Scroll to bottom — instant on initial load, smooth on new messages
-  useEffect(() => {
-    if (!bottomRef.current) return
-    if (isInitialLoad.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'instant' })
-      isInitialLoad.current = false
-    } else {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' })
+    return () => {
+      cancelled = true
+      if (pollerRef.current) clearInterval(pollerRef.current)
     }
+  }, [routeId]) // only depends on routeId — a primitive, never changes reference
+
+  // Scroll to bottom when messages arrive
+  const prevLengthRef = useRef(0)
+  useEffect(() => {
+    if (!bottomRef.current || messages.length === 0) return
+    const isFirst = prevLengthRef.current === 0
+    prevLengthRef.current = messages.length
+    bottomRef.current.scrollIntoView({ behavior: isFirst ? 'instant' : 'smooth' })
   }, [messages.length])
 
   const handleSend = async () => {
     const trimmed = text.trim()
     if (!trimmed || sending) return
     setSending(true)
-    const result = await sendMessage(routeId, trimmed)
+    const result = await useStore.getState().sendMessage(routeId, trimmed)
     setSending(false)
     if (result?.error) {
       toast(result.error, 'error')
@@ -208,14 +255,14 @@ export function ChatPage() {
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
   const getName = (msg) => msg.user?.first_name || msg.user?.username || '?'
 
-  const isRouteActive = route?.status === 'active' || route?.status === 'upcoming'
-
-  // Access denied screen
   if (accessDenied) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', background: 'var(--bg)' }}>
@@ -229,12 +276,15 @@ export function ChatPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' }}>
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(245,245,245,0.95)', backdropFilter: 'blur(20px)', flexShrink: 0 }}>
-        <button className="btn btn-ghost btn-icon" onClick={() => navigate(`/events/${id}`)}><IconBack /></button>
+        <button className="btn btn-ghost btn-icon" onClick={() => navigate(`/events/${id}`)}>
+          <IconBack />
+        </button>
         <div style={{ flex: 1 }}>
           <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 900, textTransform: 'uppercase' }}>
-            {route?.title || 'Chat'}
+            {routeTitle || 'Chat'}
           </p>
           <p style={{ fontSize: 11, color: 'var(--text-3)' }}>Chat de la ruta</p>
         </div>
@@ -243,9 +293,14 @@ export function ChatPage() {
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12, WebkitOverflowScrolling: 'touch' }}>
-        {messages.length === 0 && (
+        {!loaded && (
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
+            <span className="spinner" />
+          </div>
+        )}
+        {loaded && messages.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8, color: 'var(--text-3)', paddingTop: 60 }}>
-            <IconChat size={40} style={{ opacity: 0.3 }} />
+            <IconChat size={40} />
             <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Sin mensajes aún</p>
             <p style={{ fontSize: 13 }}>Sé el primero en escribir</p>
           </div>
@@ -254,7 +309,9 @@ export function ChatPage() {
           const isOwn = msg.user?.id === currentUser?.id
           return (
             <div key={msg.id} className={`chat-bubble${isOwn ? ' own' : ''}`}>
-              {!isOwn && <div className="avatar avatar-sm">{getName(msg)[0]?.toUpperCase()}</div>}
+              {!isOwn && (
+                <div className="avatar avatar-sm">{getName(msg)[0]?.toUpperCase()}</div>
+              )}
               <div>
                 {!isOwn && <div className="chat-bubble-name">{getName(msg)}</div>}
                 <div className="chat-bubble-content">
@@ -268,36 +325,34 @@ export function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input — hidden for ended routes past the 24h window */}
-      {(() => {
-        const chatDeadline = route?.end_date
-          ? new Date(new Date(route.end_date).getTime() + 24 * 60 * 60 * 1000)
-          : null
-        const chatOpen = chatDeadline ? new Date() < chatDeadline : true
-        if (!chatOpen) {
-          return (
-            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', textAlign: 'center' }}>
-              <p style={{ fontSize: 13, color: 'var(--text-3)' }}>El chat de esta ruta está cerrado</p>
-            </div>
-          )
-        }
-        return (
-          <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', flexShrink: 0, alignItems: 'flex-end', paddingBottom: 'calc(10px + var(--safe-bottom))' }}>
-            <textarea
-              className="chat-input"
-              placeholder="Escribe un mensaje..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              style={{ flex: 1 }}
-            />
-            <button className="btn btn-primary btn-icon" onClick={handleSend} disabled={!text.trim() || sending}>
-              {sending ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <IconSend size={18} />}
-            </button>
-          </div>
-        )
-      })()}
+      {/* Input bar */}
+      {!chatOpen ? (
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-3)' }}>El chat de esta ruta está cerrado</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, padding: '10px 16px', paddingBottom: 'calc(10px + var(--safe-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg-2)', flexShrink: 0, alignItems: 'flex-end' }}>
+          <textarea
+            className="chat-input"
+            placeholder="Escribe un mensaje..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            style={{ flex: 1 }}
+          />
+          <button
+            className="btn btn-primary btn-icon"
+            onClick={handleSend}
+            disabled={!text.trim() || sending}
+          >
+            {sending
+              ? <span className="spinner" style={{ width: 16, height: 16 }} />
+              : <IconSend size={18} />
+            }
+          </button>
+        </div>
+      )}
     </div>
   )
 }
