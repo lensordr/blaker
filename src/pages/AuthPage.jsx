@@ -167,31 +167,30 @@ export default function AuthPage() {
         <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6, maxWidth: 380 }}>
           Te hemos enviado un email a <strong style={{ color: 'var(--text)' }}>{form.email}</strong>
         </p>
-        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 32, lineHeight: 1.6, maxWidth: 380 }}>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 24, lineHeight: 1.6, maxWidth: 380 }}>
           Haz clic en el enlace del email para <strong>activar tu cuenta</strong> antes de iniciar sesión.
         </p>
-        <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 24, maxWidth: 380 }}>
+        <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 24, maxWidth: 380, width: '100%' }}>
           <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
             ⚠️ <strong style={{ color: 'var(--accent)' }}>Importante:</strong> Si no ves el email, revisa tu carpeta de <strong>spam o correo no deseado</strong>.
           </p>
         </div>
         <button
           className="btn btn-primary btn-lg btn-full"
-          style={{ maxWidth: 320, marginBottom: 12 }}
+          style={{ maxWidth: 320, marginBottom: 16 }}
           onClick={() => {
-            // Show PWA install if available, otherwise go to login
-            if (deferredPrompt) {
-              setShowEmailConfirm(false)
-              setShowInstall(true)
-            } else {
-              navigate('/auth')
-            }
+            setShowEmailConfirm(false)
+            setMode('login')
+            setStep(1)
           }}
         >
-          Entendido
+          Ir a iniciar sesión
         </button>
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 12 }}>
-          ¿No recibiste el email? Espera unos minutos o contacta con nosotros.
+        <p style={{ fontSize: 13, color: 'var(--text-3)', maxWidth: 320 }}>
+          ¿Problemas? Escríbenos a{' '}
+          <a href="mailto:rutillasmoto@outlook.com" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+            rutillasmoto@outlook.com
+          </a>
         </p>
       </div>
     )
