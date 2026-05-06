@@ -16,8 +16,6 @@ const toLocal = (iso) => {
 
 // ─── Event Form Modal ─────────────────────────────────────────────────────────
 function EventFormModal({ event, onClose }) {
-  const createRoute = useStore((s) => s.createRoute)
-  const updateRoute = useStore((s) => s.updateRoute)
   const toast = useToast()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -49,7 +47,7 @@ function EventFormModal({ event, onClose }) {
     if (!validate()) return
     setSaving(true)
     const data = { ...form, date: new Date(form.date).toISOString(), end_date: new Date(form.end_date).toISOString(), max_participants: Number(form.max_participants) }
-    const result = event ? await updateRoute(event.id, data) : await createRoute(data)
+    const result = event ? await useStore.getState().updateRoute(event.id, data) : await useStore.getState().createRoute(data)
     setSaving(false)
     if (result?.error) { toast(result.error, 'error'); return }
     toast(event ? 'Ruta actualizada ✓' : 'Ruta creada 🏍️', 'success')
@@ -115,8 +113,6 @@ function EventFormModal({ event, onClose }) {
 // ─── Participants Modal ───────────────────────────────────────────────────────
 function ParticipantsModal({ route, onClose }) {
   const participants = useStore((s) => s.participants[route.id] || [])
-  const fetchParticipants = useStore((s) => s.fetchParticipants)
-  const updateParticipant = useStore((s) => s.updateParticipant)
   const toast = useToast()
 
   useEffect(() => { useStore.getState().fetchParticipants(route.id) }, [route.id])
@@ -127,7 +123,7 @@ function ParticipantsModal({ route, onClose }) {
   const rejected = participants.filter(p => p.status === 'rejected')
 
   const handleAction = async (partId, status) => {
-    const result = await updateParticipant(route.id, partId, status)
+    const result = await useStore.getState().updateParticipant(route.id, partId, status)
     if (result?.error) toast(result.error, 'error')
     else toast(status === 'approved' ? 'Aceptado ✓' : 'Rechazado', status === 'approved' ? 'success' : 'error')
   }
@@ -180,8 +176,6 @@ function ParticipantsModal({ route, onClose }) {
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ onClose }) {
   const currentUser = useStore((s) => s.currentUser)
-  const updateCurrentUser = useStore((s) => s.updateCurrentUser)
-  const logout = useStore((s) => s.logout)
   const navigate = useNavigate()
   const toast = useToast()
   const [saving, setSaving] = useState(false)
@@ -198,7 +192,7 @@ function SettingsModal({ onClose }) {
     setSaving(true)
     const data = { first_name: form.first_name, email: form.email, insta_handle: form.insta_handle }
     if (form.password) data.password = form.password
-    const result = await updateCurrentUser(data)
+    const result = await useStore.getState().updateCurrentUser(data)
     setSaving(false)
     if (result?.error) { toast(result.error, 'error'); return }
     toast('Guardado ✓', 'success')
@@ -236,7 +230,7 @@ function SettingsModal({ onClose }) {
           <button type="submit" className="btn btn-primary btn-full" disabled={saving}>
             {saving ? <span className="spinner" /> : 'Guardar cambios'}
           </button>
-          <button type="button" className="btn btn-danger btn-full" onClick={() => { logout(); navigate('/auth') }}>
+          <button type="button" className="btn btn-danger btn-full" onClick={() => { useStore.getState().logout(); navigate('/auth') }}>
             <IconLogout size={16} /> Cerrar sesión
           </button>
         </form>
@@ -248,7 +242,6 @@ function SettingsModal({ onClose }) {
 // ─── Edit User Modal ──────────────────────────────────────────────────────────
 function EditUserModal({ user, onClose, onSaved }) {
   const toast = useToast()
-  const fetchAdminUsers = useStore((s) => s.fetchAdminUsers)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     subscription_type: user.is_subscribed ? 'subscribed' : user.is_free_user ? 'free' : 'none',
@@ -270,7 +263,7 @@ function EditUserModal({ user, onClose, onSaved }) {
     try {
       await api.updateUser(user.id, data)
       toast('Usuario actualizado ✓', 'success')
-      await fetchAdminUsers()
+      await useStore.getState().fetchAdminUsers()
       onSaved()
     } catch (err) {
       toast(err.data?.error || 'Error al actualizar', 'error')
@@ -566,10 +559,7 @@ export default function AdminPage() {
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
   const routes = useStore((s) => s.routes)
-  const fetchRoutes = useStore((s) => s.fetchRoutes)
-  const deleteRoute = useStore((s) => s.deleteRoute)
   const adminUsers = useStore((s) => s.adminUsers)
-  const fetchAdminUsers = useStore((s) => s.fetchAdminUsers)
   const participants = useStore((s) => s.participants)
   const toast = useToast()
   const [freeStats, setFreeStats] = useState(null)
@@ -584,8 +574,8 @@ export default function AdminPage() {
   const [confirmDeleteUser, setConfirmDeleteUser] = useState(null)
 
   useEffect(() => {
-    fetchRoutes()
-    fetchAdminUsers()
+    useStore.getState().fetchRoutes()
+    useStore.getState().fetchAdminUsers()
     api.getHealth().then(setFreeStats).catch(() => {})
   }, [])
 
@@ -596,17 +586,17 @@ export default function AdminPage() {
   const totalPending = Object.values(participants).flat().filter(p => p.status === 'pending').length
 
   const handleDelete = async () => {
-    const result = await deleteRoute(confirmDelete.id)
+    const result = await useStore.getState().deleteRoute(confirmDelete.id)
     setConfirmDelete(null)
     if (result?.error) toast(result.error, 'error')
-    else toast('Ruta eliminada', 'error')
+    else toast('Ruta eliminada', 'success')
   }
 
   const handleDeleteUser = async () => {
     try {
       await api.deleteUser(confirmDeleteUser.id)
       toast('Usuario eliminado', 'success')
-      fetchAdminUsers()
+      useStore.getState().fetchAdminUsers()
       setConfirmDeleteUser(null)
     } catch (err) {
       toast(err.data?.error || 'Error al eliminar', 'error')

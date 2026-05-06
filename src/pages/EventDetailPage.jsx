@@ -72,7 +72,6 @@ function PhotosTab({ route }) {
 
 // ─── Edit Route Modal ─────────────────────────────────────────────────────────
 function EditRouteModal({ route, onClose, onDelete }) {
-  const updateRoute = useStore((s) => s.updateRoute)
   const toast = useToast()
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
@@ -93,7 +92,7 @@ function EditRouteModal({ route, onClose, onDelete }) {
     e.preventDefault()
     setSaving(true)
     const data = { ...form, date: new Date(form.date).toISOString(), end_date: new Date(form.end_date).toISOString(), max_participants: Number(form.max_participants) }
-    const result = await updateRoute(route.id, data)
+    const result = await useStore.getState().updateRoute(route.id, data)
     setSaving(false)
     if (result?.error) { toast(result.error, 'error'); return }
     toast('Ruta actualizada ✓', 'success')
@@ -363,10 +362,6 @@ export default function EventDetailPage() {
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
   const routes = useStore((s) => s.routes)
-  const fetchRoutes = useStore((s) => s.fetchRoutes)
-  const joinRoute = useStore((s) => s.joinRoute)
-  const updateRoute = useStore((s) => s.updateRoute)
-  const deleteRoute = useStore((s) => s.deleteRoute)
   const [tab, setTab] = useState('info')
   const [joining, setJoining] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -381,7 +376,7 @@ export default function EventDetailPage() {
       } catch (e) {}
     }
     load()
-    if (!routes.length) fetchRoutes()
+    if (!useStore.getState().routes.length) useStore.getState().fetchRoutes()
   }, [id]) // eslint-disable-line
 
   const route = freshRoute || routes.find((r) => r.id === parseInt(id) || r.id === id)
@@ -427,7 +422,7 @@ export default function EventDetailPage() {
 
   const handleJoin = async () => {
     setJoining(true)
-    const result = await joinRoute(route.id)
+    const result = await useStore.getState().joinRoute(route.id)
     setJoining(false)
     if (result?.error === 'subscription_required') {
       toast('Necesitas suscripción para unirte', 'error')
@@ -515,7 +510,7 @@ export default function EventDetailPage() {
         {tab === 'photos' && canPhotos && <PhotosTab route={route} />}
       </div>
 
-      {showEdit && <EditRouteModal route={route} onClose={() => setShowEdit(false)} onDelete={() => { navigate('/events'); deleteRoute(route.id) }} />}
+      {showEdit && <EditRouteModal route={route} onClose={() => setShowEdit(false)} onDelete={() => { navigate('/events'); useStore.getState().deleteRoute(route.id) }} />}
     </div>
   )
 }

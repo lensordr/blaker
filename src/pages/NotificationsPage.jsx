@@ -13,7 +13,6 @@ function NotifIcon({ type }) {
 export default function NotificationsPage() {
   const navigate = useNavigate()
   const notifications = useStore((s) => s.notifications)
-  const markNotificationRead = useStore((s) => s.markNotificationRead)
 
   const hasUnread = notifications.some((n) => !n.read)
 
@@ -21,15 +20,15 @@ export default function NotificationsPage() {
     useStore.getState().fetchNotifications()
     const interval = setInterval(() => useStore.getState().fetchNotifications(), 15000)
     return () => clearInterval(interval)
-  }, []) // run once on mount
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => useStore.getState().markAllNotificationsRead(), 1500)
     return () => clearTimeout(t)
-  }, []) // run once on mount
+  }, [])
 
   const handleClick = (notif) => {
-    markNotificationRead(notif.id)
+    useStore.getState().markNotificationRead(notif.id)
     if (notif.route_id) navigate(`/events/${notif.route_id}`)
   }
 

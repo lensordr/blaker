@@ -29,7 +29,6 @@ const HEARD_FROM_LABELS = { instagram: 'Instagram', tiktok: 'TikTok', friends: '
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────
 function EditProfileModal({ onClose }) {
   const currentUser = useStore((s) => s.currentUser)
-  const updateCurrentUser = useStore((s) => s.updateCurrentUser)
   const toast = useToast()
 
   const [form, setForm] = useState({
@@ -75,7 +74,7 @@ function EditProfileModal({ onClose }) {
     }
     if (form.newPassword) updates.password = form.newPassword
 
-    const result = await updateCurrentUser(updates)
+    const result = await useStore.getState().updateCurrentUser(updates)
     setSaving(false)
     if (result?.error) {
       toast(result.error, 'error')
@@ -289,17 +288,13 @@ function InstagramPill({ handle }) {
 export default function ProfilePage() {
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
-  const logout = useStore((s) => s.logout)
   const routes = useStore((s) => s.routes)
-  const fetchRoutes = useStore((s) => s.fetchRoutes)
-  const updateCurrentUser = useStore((s) => s.updateCurrentUser)
-  const refreshUser = useStore((s) => s.refreshUser)
   const toast = useToast()
   const [showEdit, setShowEdit] = useState(false)
 
   useEffect(() => {
-    refreshUser()
-    if (!routes.length) fetchRoutes()
+    useStore.getState().refreshUser()
+    if (!useStore.getState().routes.length) useStore.getState().fetchRoutes()
   }, [])
 
   // Routes the user is approved for — derived from routes list using user_status
@@ -311,7 +306,7 @@ export default function ProfilePage() {
   const totalRoutes = currentUser?.routes_count ?? myRoutes.length
 
   const handleLogout = () => {
-    logout()
+    useStore.getState().logout()
     toast('Hasta pronto 👋', 'success')
     navigate('/auth')
   }

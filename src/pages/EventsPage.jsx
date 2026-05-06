@@ -8,8 +8,6 @@ import { useToast } from '../components/Toast'
 
 // ─── Create Route Modal ───────────────────────────────────────────────────────
 function CreateRouteModal({ onClose }) {
-  const createRoute = useStore((s) => s.createRoute)
-  const fetchRoutes = useStore((s) => s.fetchRoutes)
   const currentUser = useStore((s) => s.currentUser)
   const toast = useToast()
   const [saving, setSaving] = useState(false)
@@ -43,10 +41,10 @@ function CreateRouteModal({ onClose }) {
       end_date: new Date(form.end_date).toISOString(),
       max_participants: Number(form.max_participants),
     }
-    const result = await createRoute(data)
+    const result = await useStore.getState().createRoute(data)
     setSaving(false)
     if (result?.error) { setErrors({ general: result.error }); return }
-    await fetchRoutes()
+    await useStore.getState().fetchRoutes()
     onClose()
   }
 
@@ -213,7 +211,6 @@ export default function EventsPage() {
   const navigate = useNavigate()
   const currentUser = useStore((s) => s.currentUser)
   const routes = useStore((s) => s.routes)
-  const fetchRoutes = useStore((s) => s.fetchRoutes)
   const routesLoading = useStore((s) => s.routesLoading)
   const [filter, setFilter] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
