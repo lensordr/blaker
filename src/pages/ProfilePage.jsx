@@ -42,6 +42,7 @@ function EditProfileModal({ onClose }) {
     experience: currentUser?.experience || '',
     insta_handle: currentUser?.insta_handle || '',
     needs_food: currentUser?.needs_food ?? false,
+    isSubscriber: currentUser?.is_subscribed ?? false,
     newPassword: '',
   })
   const [errors, setErrors] = useState({})
@@ -94,7 +95,7 @@ function EditProfileModal({ onClose }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div className="avatar avatar-lg" style={{ fontSize: 24 }}>
-            {form.name?.[0]?.toUpperCase()}
+            {(form.first_name || '?')[0]?.toUpperCase()}
           </div>
           <div>
             <h2 className="modal-title" style={{ marginBottom: 2 }}>Editar perfil</h2>

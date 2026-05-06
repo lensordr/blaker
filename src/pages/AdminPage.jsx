@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale'
 import useStore from '../store/useStore'
 import { IconPlus, IconEdit, IconTrash, IconCheck, IconX, IconUsers, IconShield, IconCalendar, IconSettings, IconLogout } from '../components/Icons'
 import { useToast } from '../components/Toast'
+import { api } from '../api'
 
 const toLocal = (iso) => {
   if (!iso) return ''
@@ -244,6 +245,206 @@ function SettingsModal({ onClose }) {
   )
 }
 
+// ─── Promo Codes Tab ──────────────────────────────────────────────────────────
+function PromoCodesTab() {
+  const toast = useToast()
+  const [codes, setCodes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editCode, setEditCode] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+
+  const load = async () => {
+    setLoading(true)
+    try { setCodes(await api.getPromoCodes()) } catch (e) { toast('Error al cargar códigos', 'error') }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  const handleDelete = async (id) => {
+    const result = await api.deletePromoCode(id).then(() => ({ ok: true })).catch((e) => ({ error: e.data?.error || 'Error' }))
+    setConfirmDelete(null)
+    if (result.error) toast(result.error, 'error')
+    else { toast('Código eliminado', 'success'); load() }
+  }
+
+  return (
+    <div>
+      <button className="btn btn-primary btn-full" style={{ marginBottom: 16 }} onClick={() => { setEditCode(null); setShowForm(true) }}>
+        <IconPlus size={16} /> Crear código promocional
+      </button>
+
+      {loading && <div className="empty-state"><span className="spinner" /></div>}
+
+      {!loading && codes.length === 0 && (
+        <div className="empty-state">
+          <p className="empty-state-title">Sin códigos</p>
+          <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Crea tu primer código promocional</p>
+        </div>
+      )}
+
+      <div className="stack">
+        {codes.map((code) => (
+          <div key={code.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 900, letterSpacing: '0.08em', color: 'var(--accent)' }}>
+                  {code.code}
+                </span>
+                <span className={`badge ${code.is_active ? 'badge-approved' : 'badge-ended'}`}>
+                  {code.is_active ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                {code.days_free} días gratis
+                {code.max_uses ? ` · Máx. ${code.max_uses} usos` : ' · Usos ilimitados'}
+                {code.uses_count !== undefined ? ` · Usado ${code.uses_count} veces` : ''}
+              </p>
+              {code.expires_at && (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                  Expira: {format(new Date(code.expires_at), "d MMM yyyy", { locale: es })}
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1, borderRadius: 0, borderRight: '1px solid var(--border)' }}
+                onClick={() => { setEditCode(code); setShowForm(true) }}>
+                <IconEdit size={14} /> Editar
+              </button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1, borderRadius: 0, color: 'var(--red)' }}
+                onClick={() => setConfirmDelete(code)}>
+                <IconTrash size={14} /> Eliminar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showForm && (
+        <PromoFormModal
+          code={editCode}
+          onClose={() => { setShowForm(false); setEditCode(null) }}
+          onSaved={() => { setShowForm(false); setEditCode(null); load() }}
+        />
+      )}
+
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <h2 className="modal-title" style={{ fontSize: 20 }}>¿Eliminar código?</h2>
+            <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 24 }}>
+              Se eliminará el código <strong>{confirmDelete.code}</strong> permanentemente.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmDelete(null)}>Cancelar</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => handleDelete(confirmDelete.id)}>
+                <IconTrash size={16} /> Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Promo Form Modal ─────────────────────────────────────────────────────────
+function PromoFormModal({ code, onClose, onSaved }) {
+  const toast = useToast()
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    code: code?.code || '',
+    days_free: code?.days_free || 30,
+    max_uses: code?.max_uses || '',
+    expires_at: code?.expires_at ? code.expires_at.slice(0, 10) : '',
+    is_active: code?.is_active ?? true,
+  })
+  const [errors, setErrors] = useState({})
+  const set = (f, v) => { setForm((p) => ({ ...p, [f]: v })); setErrors((p) => ({ ...p, [f]: '' })) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.code.trim()) e.code = 'Requerido'
+    if (!form.days_free || Number(form.days_free) < 1) e.days_free = 'Mínimo 1 día'
+    setErrors(e)
+    return !Object.keys(e).length
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!validate()) return
+    setSaving(true)
+    const data = {
+      code: form.code.trim().toUpperCase(),
+      days_free: Number(form.days_free),
+      max_uses: form.max_uses ? Number(form.max_uses) : null,
+      expires_at: form.expires_at || null,
+      is_active: form.is_active,
+    }
+    try {
+      if (code) await api.updatePromoCode(code.id, data)
+      else await api.createPromoCode(data)
+      toast(code ? 'Código actualizado ✓' : 'Código creado ✓', 'success')
+      onSaved()
+    } catch (err) {
+      toast(err.data?.error || 'Error al guardar', 'error')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <h2 className="modal-title">{code ? 'Editar código' : 'Nuevo código'}</h2>
+        <form onSubmit={handleSubmit} className="stack">
+          <div className="form-group">
+            <label className="form-label">Código *</label>
+            <input className="form-input" value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase())}
+              placeholder="Ej: RUTILLAS30" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }} />
+            {errors.code && <span className="form-error">{errors.code}</span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-group">
+              <label className="form-label">Días gratis *</label>
+              <input className="form-input" type="number" min="1" max="365" value={form.days_free}
+                onChange={(e) => set('days_free', e.target.value)} />
+              {errors.days_free && <span className="form-error">{errors.days_free}</span>}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Máx. usos</label>
+              <input className="form-input" type="number" min="1" value={form.max_uses}
+                onChange={(e) => set('max_uses', e.target.value)} placeholder="Ilimitado" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Fecha de expiración</label>
+            <input className="form-input" type="date" value={form.expires_at}
+              onChange={(e) => set('expires_at', e.target.value)} />
+          </div>
+          <div style={{ background: 'var(--bg-3)', borderRadius: 'var(--radius)', padding: '4px 14px' }}>
+            <div className="toggle-row">
+              <span className="toggle-label">Código activo</span>
+              <label className="toggle">
+                <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={saving}>
+              {saving ? <span className="spinner" /> : code ? 'Guardar' : 'Crear código'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const navigate = useNavigate()
@@ -314,7 +515,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 16px' }}>
-        {[{ key: 'routes', label: 'Rutas' }, { key: 'users', label: `Riders (${adminUsers.length})` }].map(t => (
+        {[{ key: 'routes', label: 'Rutas' }, { key: 'users', label: `Riders (${adminUsers.length})` }, { key: 'promos', label: '🎟️ Promos' }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: '12px 16px', border: 'none', background: 'transparent', color: tab === t.key ? 'var(--accent)' : 'var(--text-3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent', marginBottom: -1 }}>
             {t.label}
           </button>
@@ -379,6 +580,11 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Promo codes tab */}
+        {tab === 'promos' && (
+          <PromoCodesTab />
         )}
       </div>
 

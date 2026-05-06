@@ -42,6 +42,7 @@ const useStore = create(
             insta_handle: data.instaHandle || '',
             needs_food: data.needsFood || false,
             heard_from: data.heardFrom || '',
+            promo_code: data.promoCode || '',
           })
           return { ok: true }
         } catch (e) {

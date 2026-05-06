@@ -52,7 +52,12 @@ export const api = {
 
   // Payment
   getPaymentLink: () => request('GET', '/payments/link/'),
-  getAppInfo: () => request('GET', '/health/', null, false),
+  // Promo codes
+  getPromoCodes: () => request('GET', '/admin/promo-codes/'),
+  createPromoCode: (data) => request('POST', '/admin/promo-codes/', data),
+  updatePromoCode: (id, data) => request('PATCH', `/admin/promo-codes/${id}/`, data),
+  deletePromoCode: (id) => request('DELETE', `/admin/promo-codes/${id}/`),
+  validatePromo: (code) => request('POST', '/promo/validate/', { code }, false),
 
   // Email
   confirmEmail: (token) => request('GET', `/auth/confirm/${token}/`, null, false),

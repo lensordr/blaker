@@ -51,19 +51,14 @@ export default function AuthPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
-  const [freeSpots, setFreeSpots] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstall, setShowInstall] = useState(false)
-  const [registered, setRegistered] = useState(false)
   const navigate = useNavigate()
   const login = useStore((s) => s.login)
   const register = useStore((s) => s.register)
   const toast = useToast()
 
   useEffect(() => {
-    // Fetch free spots
-    api.getAppInfo().then((d) => setFreeSpots(d.free_spots_left)).catch(() => {})
-
     // Capture PWA install prompt
     const handler = (e) => { e.preventDefault(); setDeferredPrompt(e) }
     window.addEventListener('beforeinstallprompt', handler)
@@ -232,40 +227,6 @@ export default function AuthPage() {
       <div style={{ marginBottom: 24, position: 'relative', zIndex: 1 }}>
         <BlakerLogo size={44} showTagline center />
       </div>
-
-      {/* Free spots banner */}
-      {freeSpots !== null && freeSpots > 0 && mode === 'register' && (
-        <div style={{
-          width: '100%', maxWidth: 400, marginBottom: 16, zIndex: 1, position: 'relative',
-          background: 'linear-gradient(135deg, var(--accent-dim), rgba(232,50,10,0.05))',
-          border: '1px solid var(--accent-border)',
-          borderRadius: 'var(--radius-lg)', padding: '12px 16px',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 24 }}>🎁</span>
-          <div>
-            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 900, textTransform: 'uppercase', color: 'var(--accent)' }}>
-              {freeSpots} plazas gratuitas disponibles
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 1 }}>
-              Regístrate ahora y accede gratis si estás cerca
-            </p>
-          </div>
-        </div>
-      )}
-      {freeSpots === 0 && mode === 'register' && (
-        <div style={{
-          width: '100%', maxWidth: 400, marginBottom: 16, zIndex: 1, position: 'relative',
-          background: 'var(--bg-3)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)', padding: '12px 16px',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 20 }}>ℹ️</span>
-          <p style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            Las plazas gratuitas están completas. Suscripción por <strong>3,99€/mes</strong>.
-          </p>
-        </div>
-      )}
 
       {/* Card */}
       <div style={{
@@ -470,6 +431,20 @@ export default function AuthPage() {
                     {form.latitude ? '✓ OK' : 'Permitir'}
                   </button>
                 </div>
+                {/* Promo code */}
+                <div className="form-group">
+                  <label className="form-label">Código promocional <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(opcional)</span></label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="Ej: RUTILLAS30"
+                    value={form.promoCode || ''}
+                    onChange={(e) => set('promoCode', e.target.value.toUpperCase())}
+                    style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
+                  />
+                  <span className="form-hint">30 días gratis con código válido</span>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">¿Cómo nos conociste?</label>
                   <select className="form-select" value={form.heardFrom} onChange={(e) => set('heardFrom', e.target.value)}>

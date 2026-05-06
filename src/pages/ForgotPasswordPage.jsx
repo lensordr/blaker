@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import BlakerLogo from '../components/BlakerLogo'
 import { api } from '../api'
@@ -151,11 +151,11 @@ export function ConfirmEmailPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('loading') // loading | ok | error
 
-  useState(() => {
+  useEffect(() => {
     api.confirmEmail(token)
       .then(() => setStatus('ok'))
       .catch(() => setStatus('error'))
-  })
+  }, [token])
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 20px', background: 'var(--bg)', textAlign: 'center' }}>
