@@ -162,8 +162,11 @@ const useStore = create(
           const list = await api.getMessages(routeId)
           set((s) => ({ messages: { ...s.messages, [routeId]: list } }))
         } catch (e) {
-          // If 403, store empty array so UI shows "no messages" not blank
-          set((s) => ({ messages: { ...s.messages, [routeId]: s.messages[routeId] || [] } }))
+          // Only set empty array if not already set — avoids creating new [] reference
+          set((s) => {
+            if (s.messages[routeId] !== undefined) return s
+            return { messages: { ...s.messages, [routeId]: [] } }
+          })
         }
       },
 
@@ -173,7 +176,7 @@ const useStore = create(
           set((s) => ({
             messages: {
               ...s.messages,
-              [routeId]: [...(s.messages[routeId] || []), msg],
+              [routeId]: [...(s.messages[routeId] ?? []), msg],
             },
           }))
           return { ok: true }

@@ -147,26 +147,14 @@ export function ChatPage() {
 
   // Only subscribe to data, never to actions
   const currentUser = useStore((s) => s.currentUser)
-  const messages = useStore((s) => s.messages[routeId] || [])
-  const routeTitle = useStore((s) => {
-    const r = s.routes.find((r) => r.id === routeId)
-    return r?.title || null
-  })
-  const routeStatus = useStore((s) => {
-    const r = s.routes.find((r) => r.id === routeId)
-    return r?.status || null
-  })
-  const routeEndDate = useStore((s) => {
-    const r = s.routes.find((r) => r.id === routeId)
-    return r?.end_date || null
-  })
-  const userStatus = useStore((s) => {
-    const r = s.routes.find((r) => r.id === routeId)
-    return r?.user_status || null
-  })
+  const messages = useStore((s) => s.messages[routeId])  // undefined until loaded — no || []
+  const routeTitle = useStore((s) => s.routes.find((r) => r.id === routeId)?.title ?? null)
+  const routeStatus = useStore((s) => s.routes.find((r) => r.id === routeId)?.status ?? null)
+  const routeEndDate = useStore((s) => s.routes.find((r) => r.id === routeId)?.end_date ?? null)
+  const userStatus = useStore((s) => s.routes.find((r) => r.id === routeId)?.user_status ?? null)
   const isCreator = useStore((s) => {
     const r = s.routes.find((r) => r.id === routeId)
-    return r?.creator?.id === s.currentUser?.id
+    return !!(r && r.creator?.id === s.currentUser?.id)
   })
 
   const [text, setText] = useState('')
@@ -304,7 +292,7 @@ export function ChatPage() {
             <p style={{ fontSize: 13 }}>Sé el primero en escribir</p>
           </div>
         )}
-        {messages.map((msg) => {
+        {(messages ?? []).map((msg) => {
           const isOwn = msg.user?.id === currentUser?.id
           return (
             <div key={msg.id} className={`chat-bubble${isOwn ? ' own' : ''}`}>
