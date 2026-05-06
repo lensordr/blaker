@@ -149,8 +149,12 @@ export default function AuthPage() {
       setErrors({ general: result.error })
       setStep(1)
     } else {
-      // Always show email confirmation screen first
-      setShowEmailConfirm(true)
+      // Show PWA install first if available, then email confirm
+      if (deferredPrompt) {
+        setShowInstall(true)
+      } else {
+        setShowEmailConfirm(true)
+      }
     }
   }
 
@@ -192,11 +196,14 @@ export default function AuthPage() {
             rutillasmoto@outlook.com
           </a>
         </p>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 16, maxWidth: 320 }}>
+          📱 <strong>iPhone:</strong> Safari → Compartir → Añadir a pantalla de inicio
+        </p>
       </div>
     )
   }
 
-  // PWA install screen shown after email confirmation
+  // PWA install screen — shown before email confirm screen
   if (showInstall) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
@@ -216,12 +223,17 @@ export default function AuthPage() {
               await deferredPrompt.userChoice
               setDeferredPrompt(null)
             }
-            navigate('/auth')
+            setShowInstall(false)
+            setShowEmailConfirm(true)
           }}
         >
           📲 Añadir a pantalla de inicio
         </button>
-        <button className="btn btn-ghost btn-full" style={{ maxWidth: 320 }} onClick={() => navigate('/auth')}>
+        <button
+          className="btn btn-ghost btn-full"
+          style={{ maxWidth: 320 }}
+          onClick={() => { setShowInstall(false); setShowEmailConfirm(true) }}
+        >
           Ahora no
         </button>
         <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 20 }}>
