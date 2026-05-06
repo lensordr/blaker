@@ -160,19 +160,21 @@ export function ChatPage() {
 
   const route = routes.find((r) => r.id === routeId)
 
-  // Access guard — user must be approved or admin/creator
+  // Load routes once if store is empty
   useEffect(() => {
-    if (!route) {
-      if (!routes.length) fetchRoutes()
-      return
-    }
+    if (!routes.length) fetchRoutes()
+  }, []) // eslint-disable-line
+
+  // Access guard — runs once when route becomes available
+  useEffect(() => {
+    if (!route) return
     const isAdmin = currentUser?.is_staff
     const isCreator = route.creator?.id === currentUser?.id
     const isApproved = route.user_status === 'approved'
     if (!isAdmin && !isCreator && !isApproved) {
       setAccessDenied(true)
     }
-  }, [route, currentUser, routes.length, fetchRoutes])
+  }, [route?.id, route?.user_status]) // eslint-disable-line
 
   useEffect(() => {
     if (accessDenied) return
