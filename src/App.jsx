@@ -5,6 +5,7 @@ import BottomNav from './components/BottomNav'
 import { ToastProvider } from './components/Toast'
 
 import AuthPage from './pages/AuthPage'
+import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import EventsPage from './pages/EventsPage'
 import EventDetailPage, { ChatPage } from './pages/EventDetailPage'
@@ -90,6 +91,9 @@ export default function App() {
       <ToastProvider />
       <NotificationPoller />
       <Routes>
+        {/* Public landing */}
+        <Route path="/" element={currentUser ? <Navigate to="/events" replace /> : <LandingPage />} />
+
         {/* Auth */}
         <Route path="/auth" element={currentUser ? <Navigate to="/events" replace /> : <AuthPage />} />
         <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
@@ -98,7 +102,7 @@ export default function App() {
 
         {/* Protected routes */}
         <Route
-          path="/"
+          path="/home"
           element={
             <ProtectedRoute>
               <AppLayout>
@@ -167,7 +171,7 @@ export default function App() {
         />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to={currentUser ? '/events' : '/auth'} replace />} />
+        <Route path="*" element={<Navigate to={currentUser ? '/events' : '/'} replace />} />
       </Routes>
     </BrowserRouter>
     </ErrorBoundary>

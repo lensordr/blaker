@@ -65,7 +65,7 @@ export default function BottomNav() {
           </NavLink>
         )}
 
-        <NavLink to="/" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} end>
+        <NavLink to="/home" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} end>
           {({ isActive }) => (
             <>
               {isActive && <span className="nav-active-dot" />}
