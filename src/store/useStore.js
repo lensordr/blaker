@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { api, setToken, clearToken } from '../api'
+import { checkRateLimit, RATE_LIMITS } from '../security/rateLimiter'
 
 const useStore = create(
   persist(
@@ -9,9 +10,9 @@ const useStore = create(
       currentUser: null,
       token: null,
 
-      login: async (email, password) => {
+      login: async (email, password, captchaToken) => {
         try {
-          const data = await api.login({ username: email, email, password })
+          const data = await api.login({ username: email, email, password, captcha_token: captchaToken })
           setToken(data.access)
           set({ currentUser: data.user, token: data.access })
           return { user: data.user }
@@ -43,6 +44,7 @@ const useStore = create(
             needs_food: data.needsFood || false,
             heard_from: data.heardFrom || '',
             promo_code: data.promoCode || '',
+            captcha_token: data.captchaToken || '',
           })
           return { ok: true }
         } catch (e) {
@@ -87,6 +89,11 @@ const useStore = create(
       },
 
       createRoute: async (data) => {
+        // Rate limit route creation
+        const rateCheck = checkRateLimit('createRoute', RATE_LIMITS.createRoute)
+        if (!rateCheck.allowed) {
+          return { error: 'Demasiadas rutas creadas. Espera unos minutos.' }
+        }
         try {
           const route = await api.createRoute(data)
           set((s) => ({ routes: [...s.routes, route] }))
@@ -117,6 +124,11 @@ const useStore = create(
       },
 
       joinRoute: async (id) => {
+        // Rate limit join requests
+        const rateCheck = checkRateLimit('joinRoute', RATE_LIMITS.joinRoute)
+        if (!rateCheck.allowed) {
+          return { error: 'Demasiadas solicitudes. Espera un momento.' }
+        }
         try {
           const res = await api.joinRoute(id)
           // Refresh route to get updated user_status
@@ -171,6 +183,11 @@ const useStore = create(
       },
 
       sendMessage: async (routeId, text) => {
+        // Rate limit messages
+        const rateCheck = checkRateLimit('sendMessage', RATE_LIMITS.sendMessage)
+        if (!rateCheck.allowed) {
+          return { error: 'Demasiados mensajes. Espera un momento.' }
+        }
         try {
           const msg = await api.sendMessage(routeId, text)
           set((s) => ({

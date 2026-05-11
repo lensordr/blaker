@@ -4,6 +4,7 @@ import useStore from '../store/useStore'
 import BlakerLogo from '../components/BlakerLogo'
 import { useToast } from '../components/Toast'
 import { api } from '../api'
+import { Turnstile, useHoneypot, checkRateLimit, resetRateLimit, formatRetryAfter, RATE_LIMITS, validatePassword } from '../security'
 
 const MOTO_TYPE_OPTIONS = [
   { value: 'naked', label: 'Naked' },
@@ -141,10 +142,12 @@ export default function AuthPage() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstall, setShowInstall] = useState(false)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
   const navigate = useNavigate()
   const login = useStore((s) => s.login)
   const register = useStore((s) => s.register)
   const toast = useToast()
+  const { HoneypotFields, validateHoneypot, resetTimer } = useHoneypot()
 
   useEffect(() => {
     // Capture PWA install prompt
@@ -208,12 +211,28 @@ export default function AuthPage() {
     if (!form.email.trim()) errs.email = 'Email requerido'
     if (!form.password) errs.password = 'Contraseña requerida'
     if (Object.keys(errs).length) { setErrors(errs); return }
+
+    // Rate limit check
+    const rateCheck = checkRateLimit('login', RATE_LIMITS.login)
+    if (!rateCheck.allowed) {
+      setErrors({ general: `Demasiados intentos. Espera ${formatRetryAfter(rateCheck.retryAfterMs)}.` })
+      return
+    }
+
+    // CAPTCHA check
+    if (!captchaToken) {
+      setErrors({ general: 'Completa la verificación de seguridad' })
+      return
+    }
+
     setLoading(true)
-    const result = await login(form.email, form.password)
+    const result = await login(form.email, form.password, captchaToken)
     setLoading(false)
     if (result.error) {
       setErrors({ general: result.error })
+      setCaptchaToken(null) // Reset CAPTCHA on failure
     } else {
+      resetRateLimit('login')
       toast('¡Bienvenido de vuelta!', 'success')
       navigate('/')
     }
@@ -228,14 +247,44 @@ export default function AuthPage() {
   const handleRegister = async (e) => {
     e.preventDefault()
     if (!validateStep3()) return
-    setLoading(true)
 
-    const result = await register({ ...form })
+    // Honeypot check — silent rejection for bots
+    if (!validateHoneypot()) {
+      // Fake success to not alert the bot
+      setShowInstall(true)
+      return
+    }
+
+    // Rate limit check
+    const rateCheck = checkRateLimit('register', RATE_LIMITS.register)
+    if (!rateCheck.allowed) {
+      setErrors({ general: `Demasiados intentos. Espera ${formatRetryAfter(rateCheck.retryAfterMs)}.` })
+      return
+    }
+
+    // CAPTCHA check
+    if (!captchaToken) {
+      setErrors({ general: 'Completa la verificación de seguridad' })
+      return
+    }
+
+    // Password strength check
+    const pwCheck = validatePassword(form.password)
+    if (!pwCheck.valid) {
+      setErrors({ general: pwCheck.message })
+      setStep(1)
+      return
+    }
+
+    setLoading(true)
+    const result = await register({ ...form, captchaToken })
     setLoading(false)
     if (result.error) {
       setErrors({ general: result.error })
       setStep(1)
+      setCaptchaToken(null)
     } else {
+      resetRateLimit('register')
       // Always show install screen first, then email confirm
       setShowInstall(true)
     }
@@ -366,7 +415,7 @@ export default function AuthPage() {
           {[['login', 'Entrar'], ['register', 'Registrarse']].map(([m, label]) => (
             <button
               key={m}
-              onClick={() => { setMode(m); setStep(1); setErrors({}) }}
+              onClick={() => { setMode(m); setStep(1); setErrors({}); setCaptchaToken(null); resetTimer() }}
               style={{
                 flex: 1,
                 padding: '9px',
@@ -412,6 +461,7 @@ export default function AuthPage() {
             <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
               {loading ? <span className="spinner" /> : 'Entrar'}
             </button>
+            <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
             <button type="button" className="btn btn-ghost btn-full btn-sm" onClick={() => navigate('/auth/forgot')} style={{ marginTop: -4 }}>
               ¿Olvidaste tu contraseña?
             </button>
@@ -450,6 +500,7 @@ export default function AuthPage() {
             {/* Step 1 — Account */}
             {step === 1 && (
               <form onSubmit={handleNext} className="stack">
+                <HoneypotFields />
                 <div className="form-group">
                   <label className="form-label">Nombre completo</label>
                   <input className="form-input" type="text" placeholder="Tu nombre"
@@ -618,6 +669,7 @@ export default function AuthPage() {
                     {loading ? <span className="spinner" /> : 'Crear cuenta 🏍️'}
                   </button>
                 </div>
+                <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
               </form>
             )}
           </>

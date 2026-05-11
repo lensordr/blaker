@@ -5,6 +5,7 @@ import { IconLogout, IconShield, IconMapPin, IconCalendar, IconSettings, IconEdi
 import { useToast } from '../components/Toast'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { sanitizeText, sanitizeEmail, sanitizeInstagram, validatePassword } from '../security'
 
 const EXPERIENCE_LABELS = { beginner: 'Principiante', medio: 'Medio', advanced: 'Avanzado' }
 const EXPERIENCE_COLORS = { beginner: 'var(--green)', medio: 'var(--yellow)', advanced: 'var(--accent)' }
@@ -41,9 +42,11 @@ function EditProfileModal({ onClose }) {
     experience: currentUser?.experience || '',
     insta_handle: currentUser?.insta_handle || '',
     newPassword: '',
+    currentPassword: '', // Required for email/password changes
   })
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const emailChanged = form.email.trim().toLowerCase() !== (currentUser?.email || '').toLowerCase()
 
   const set = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -56,20 +59,33 @@ function EditProfileModal({ onClose }) {
     if (!form.first_name.trim()) errs.first_name = 'Nombre requerido'
     if (!form.email.trim()) errs.email = 'Email requerido'
     if (form.newPassword && form.newPassword.length < 6) errs.newPassword = 'Mínimo 6 caracteres'
+    
+    // Require current password for email or password changes
+    if ((emailChanged || form.newPassword) && !form.currentPassword) {
+      errs.currentPassword = 'Contraseña actual requerida para cambiar email o contraseña'
+    }
+
+    // Validate new password strength
+    if (form.newPassword) {
+      const pwCheck = validatePassword(form.newPassword)
+      if (!pwCheck.valid) errs.newPassword = pwCheck.message
+    }
+
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSaving(true)
     const updates = {
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      email: form.email.trim(),
-      location: form.location.trim(),
+      first_name: sanitizeText(form.first_name.trim(), 50),
+      last_name: sanitizeText(form.last_name.trim(), 50),
+      email: sanitizeEmail(form.email.trim()),
+      location: sanitizeText(form.location.trim(), 100),
       moto_type: form.moto_type,
-      moto_model: form.moto_model.trim(),
+      moto_model: sanitizeText(form.moto_model.trim(), 100),
       experience: form.experience,
-      insta_handle: form.insta_handle.trim(),
+      insta_handle: sanitizeInstagram(form.insta_handle),
     }
     if (form.newPassword) updates.password = form.newPassword
+    if (emailChanged || form.newPassword) updates.current_password = form.currentPassword
 
     const result = await useStore.getState().updateCurrentUser(updates)
     setSaving(false)
@@ -178,6 +194,19 @@ function EditProfileModal({ onClose }) {
           {/* ── Password ── */}
           <div style={{ height: 1, background: 'var(--border)' }} />
           <p className="section-title" style={{ marginBottom: 4 }}>Cambiar contraseña</p>
+
+          {/* Current password — required for email/password changes */}
+          {(emailChanged || form.newPassword) && (
+            <div className="form-group">
+              <label className="form-label">Contraseña actual <span style={{ color: 'var(--accent)', fontWeight: 700 }}>*</span></label>
+              <input className="form-input" type="password" value={form.currentPassword}
+                onChange={(e) => set('currentPassword', e.target.value)} placeholder="Tu contraseña actual" />
+              {errors.currentPassword && <span className="form-error">{errors.currentPassword}</span>}
+              <span className="form-hint" style={{ color: 'var(--accent)' }}>
+                Requerida para cambiar {emailChanged && form.newPassword ? 'email y contraseña' : emailChanged ? 'email' : 'contraseña'}
+              </span>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Nueva contraseña</label>
