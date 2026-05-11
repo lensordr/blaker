@@ -62,6 +62,7 @@ export const api = {
 
   // Email
   confirmEmail: (token) => request('GET', `/auth/confirm/${token}/`, null, false),
+  resendConfirmation: (email) => request('POST', '/auth/resend-confirmation/', { email }, false),
   forgotPassword: (email) => request('POST', '/auth/forgot-password/', { email }, false),
   resetPassword: (token, password) => request('POST', '/auth/reset-password/', { token, password }, false),
 

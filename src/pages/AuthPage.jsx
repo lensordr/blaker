@@ -29,6 +29,93 @@ const HEARD_FROM_OPTIONS = [
   { value: 'other', label: 'Otro' },
 ]
 
+// ─── Email Confirm Screen ─────────────────────────────────────────────────────
+function EmailConfirmScreen({ email, onDone }) {
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSend = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await api.resendConfirmation(email)
+      setSent(true)
+    } catch (e) {
+      if (e.status === 429) {
+        setError('Demasiados intentos. Espera un momento.')
+      } else {
+        setError('Error al enviar. Inténtalo de nuevo.')
+      }
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
+      <div style={{ fontSize: 64, marginBottom: 16 }}>{sent ? '📬' : '✉️'}</div>
+      <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>
+        {sent ? 'Email enviado' : 'Confirma tu cuenta'}
+      </h2>
+      <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6, maxWidth: 380 }}>
+        {sent
+          ? <>Hemos enviado el enlace de confirmación a <strong style={{ color: 'var(--text)' }}>{email}</strong></>
+          : <>Tu cuenta está lista. Pulsa el botón para recibir el enlace de confirmación en <strong style={{ color: 'var(--text)' }}>{email}</strong></>
+        }
+      </p>
+      {sent && (
+        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 24, lineHeight: 1.6, maxWidth: 380 }}>
+          Haz clic en el enlace para <strong>activar tu cuenta</strong> antes de iniciar sesión.
+        </p>
+      )}
+      {!sent && (
+        <p style={{ fontSize: 14, color: 'var(--text-3)', marginBottom: 24, lineHeight: 1.6, maxWidth: 380 }}>
+          No te enviaremos nada sin que lo pidas.
+        </p>
+      )}
+
+      {error && (
+        <div style={{ background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, color: 'var(--red)', marginBottom: 16, maxWidth: 320, width: '100%' }}>
+          {error}
+        </div>
+      )}
+
+      {!sent ? (
+        <button
+          className="btn btn-primary btn-lg btn-full"
+          style={{ maxWidth: 320, marginBottom: 12 }}
+          onClick={handleSend}
+          disabled={loading}
+        >
+          {loading ? <span className="spinner" /> : '📧 Enviar email de confirmación'}
+        </button>
+      ) : (
+        <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 24, maxWidth: 380, width: '100%' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
+            ⚠️ <strong style={{ color: 'var(--accent)' }}>Importante:</strong> Si no ves el email, revisa tu carpeta de <strong>spam o correo no deseado</strong>.
+          </p>
+        </div>
+      )}
+
+      <button
+        className="btn btn-ghost btn-full"
+        style={{ maxWidth: 320, marginBottom: 16 }}
+        onClick={onDone}
+      >
+        Ir a iniciar sesión
+      </button>
+
+      <p style={{ fontSize: 13, color: 'var(--text-3)', maxWidth: 320 }}>
+        ¿Problemas? Escríbenos a{' '}
+        <a href="mailto:rutillasmoto@outlook.com" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+          rutillasmoto@outlook.com
+        </a>
+      </p>
+    </div>
+  )
+}
+
+// ─── Step dots ────────────────────────────────────────────────────────────────
 // Step indicator
 function StepDots({ current, total }) {
   return (
@@ -159,40 +246,10 @@ export default function AuthPage() {
   // Email confirmation screen shown after registration
   if (showEmailConfirm) {
     return (
-      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)', textAlign: 'center' }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>📧</div>
-        <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>
-          Revisa tu email
-        </h2>
-        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6, maxWidth: 380 }}>
-          Te hemos enviado un email a <strong style={{ color: 'var(--text)' }}>{form.email}</strong>
-        </p>
-        <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 24, lineHeight: 1.6, maxWidth: 380 }}>
-          Haz clic en el enlace del email para <strong>activar tu cuenta</strong> antes de iniciar sesión.
-        </p>
-        <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 24, maxWidth: 380, width: '100%' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
-            ⚠️ <strong style={{ color: 'var(--accent)' }}>Importante:</strong> Si no ves el email, revisa tu carpeta de <strong>spam o correo no deseado</strong>.
-          </p>
-        </div>
-        <button
-          className="btn btn-primary btn-lg btn-full"
-          style={{ maxWidth: 320, marginBottom: 16 }}
-          onClick={() => {
-            setShowEmailConfirm(false)
-            setMode('login')
-            setStep(1)
-          }}
-        >
-          Ir a iniciar sesión
-        </button>
-        <p style={{ fontSize: 13, color: 'var(--text-3)', maxWidth: 320 }}>
-          ¿Problemas? Escríbenos a{' '}
-          <a href="mailto:rutillasmoto@outlook.com" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
-            rutillasmoto@outlook.com
-          </a>
-        </p>
-      </div>
+      <EmailConfirmScreen
+        email={form.email}
+        onDone={() => { setShowEmailConfirm(false); setMode('login'); setStep(1) }}
+      />
     )
   }
 
