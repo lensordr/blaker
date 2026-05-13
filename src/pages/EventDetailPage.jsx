@@ -6,7 +6,7 @@ import useStore from '../store/useStore'
 import { api } from '../api'
 import {
   IconBack, IconMapPin, IconClock, IconUsers, IconLink,
-  IconChat, IconSend, IconImage, IconCamera, IconEdit, IconTrash
+  IconChat, IconSend, IconEdit, IconTrash
 } from '../components/Icons'
 import { useToast } from '../components/Toast'
 
@@ -14,58 +14,18 @@ const STATUS_LABELS = { upcoming: 'Próximo', active: 'En curso', full: 'Complet
 
 // ─── Photos Tab ───────────────────────────────────────────────────────────────
 function PhotosTab({ route }) {
-  const [photos, setPhotos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`photos_${route.id}`) || '[]') } catch { return [] }
-  })
-  const [preview, setPreview] = useState(null)
-  const fileRef = useRef(null)
-  const toast = useToast()
-  const currentUser = useStore((s) => s.currentUser)
-
-  const handleFile = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (!file.type.startsWith('image/')) { toast('Solo imágenes', 'error'); return }
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const photo = { id: Date.now(), url: ev.target.result, userName: currentUser?.first_name || currentUser?.username || 'Rider', createdAt: new Date().toISOString() }
-      const updated = [photo, ...photos]
-      setPhotos(updated)
-      localStorage.setItem(`photos_${route.id}`, JSON.stringify(updated))
-      toast('Foto publicada 📸', 'success')
-    }
-    reader.readAsDataURL(file)
-    e.target.value = ''
-  }
-
   return (
-    <div style={{ padding: '12px 0', paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom) + 12px)' }}>
-      {route.status !== 'ended' && (
-        <div style={{ padding: '0 16px 12px' }}>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
-          <button className="btn btn-secondary btn-full" onClick={() => fileRef.current?.click()}>
-            <IconCamera size={18} /> Subir foto
-          </button>
-        </div>
-      )}
-      {photos.length === 0 ? (
-        <div className="empty-state"><IconImage size={40} /><p className="empty-state-title">Sin fotos aún</p></div>
-      ) : (
-        <div className="photo-grid">
-          {photos.map((p) => (
-            <div key={p.id} className="photo-grid-item" onClick={() => setPreview(p)}>
-              <img src={p.url} alt="foto" loading="lazy" />
-            </div>
-          ))}
-        </div>
-      )}
-      {preview && (
-        <div className="modal-overlay" onClick={() => setPreview(null)} style={{ alignItems: 'center', padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: '100%' }}>
-            <img src={preview.url} alt="" style={{ width: '100%', borderRadius: 'var(--radius-lg)', maxHeight: '80dvh', objectFit: 'contain' }} />
-          </div>
-        </div>
-      )}
+    <div style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 12 }}>
+      <div style={{ fontSize: 48 }}>📸</div>
+      <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Próximamente
+      </p>
+      <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 280 }}>
+        Pronto podrás compartir fotos de tus rutas directamente en la app.
+      </p>
+      <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '10px 20px', marginTop: 8 }}>
+        <p style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>🚀 Coming soon</p>
+      </div>
     </div>
   )
 }
