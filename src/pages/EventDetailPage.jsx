@@ -12,6 +12,37 @@ import { useToast } from '../components/Toast'
 
 const STATUS_LABELS = { upcoming: 'Próximo', active: 'En curso', full: 'Completo', ended: 'Finalizado' }
 
+// ─── Add to Calendar ──────────────────────────────────────────────────────────
+function addToCalendar(route) {
+  const fmt = (d) => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const location = [route.city, route.location_detail].filter(Boolean).join(' — ')
+  const description = route.description || `Ruta organizada en RUTILLAS\\nMás info: https://rutillas.com`
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//RUTILLAS//ES',
+    'BEGIN:VEVENT',
+    `UID:rutillas-route-${route.id}@rutillas.com`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(route.date)}`,
+    `DTEND:${fmt(route.end_date)}`,
+    `SUMMARY:🏍️ ${route.title}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${location}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n')
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `rutillas-${route.title.replace(/\s+/g, '-').toLowerCase()}.ics`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ─── Photos Tab ───────────────────────────────────────────────────────────────
 function PhotosTab({ route }) {
   return (
@@ -443,7 +474,14 @@ export default function EventDetailPage() {
                 <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
                   {!userStatus && route.status !== 'ended' && <button className="btn btn-primary btn-full btn-lg" onClick={handleJoin} disabled={joining}>{joining ? <span className="spinner" /> : 'Unirse a la ruta'}</button>}
                   {userStatus === 'pending' && <div style={{ textAlign: 'center' }}><span className="badge badge-pending" style={{ fontSize: 13, padding: '6px 14px' }}>Solicitud pendiente</span></div>}
-                  {userStatus === 'approved' && <div style={{ textAlign: 'center' }}><span className="badge badge-approved" style={{ fontSize: 13, padding: '6px 14px' }}>✓ Aceptado</span></div>}
+                  {userStatus === 'approved' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                      <span className="badge badge-approved" style={{ fontSize: 13, padding: '6px 14px' }}>✓ Aceptado</span>
+                      <button className="btn btn-ghost btn-sm" onClick={() => addToCalendar(route)}>
+                        📅 Añadir al calendario
+                      </button>
+                    </div>
+                  )}
                   {userStatus === 'rejected' && <div style={{ textAlign: 'center' }}><span className="badge badge-rejected" style={{ fontSize: 13, padding: '6px 14px' }}>Solicitud rechazada</span></div>}
                   {route.status === 'ended' && !userStatus && <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>Esta ruta ha finalizado</p>}
                 </div>
@@ -451,6 +489,11 @@ export default function EventDetailPage() {
               {canChat && (
                 <button className="btn btn-secondary btn-full" onClick={() => navigate(`/events/${id}/chat`)}>
                   <IconChat size={18} /> Abrir chat de la ruta
+                </button>
+              )}
+              {(isCreator || isAdmin) && route.status !== 'ended' && (
+                <button className="btn btn-ghost btn-full" onClick={() => addToCalendar(route)}>
+                  📅 Añadir al calendario
                 </button>
               )}
             </div>
